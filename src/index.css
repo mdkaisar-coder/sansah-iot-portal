@@ -1,0 +1,85 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Outfit', sans-serif;
+  
+  --color-background: #060B16;
+  --color-card: #111827;
+  --color-card-hover: #1f2937;
+  --color-text: #F9FAFB;
+  --color-muted: #94A3B8;
+  --color-primary: #3B82F6;
+  --color-primary-hover: #2563eb;
+  --color-secondary: #0B1220;
+  --color-secondary-hover: #1e293b;
+  --color-border: #1F2937;
+  
+  --color-success: #10B981;
+  --color-warning: #F59E0B;
+  --color-danger: #EF4444;
+  
+  --shadow-soft: 0 4px 24px -2px rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 0 15px -3px rgba(59, 130, 246, 0.2);
+}
+
+@layer base {
+  body {
+    background-color: var(--color-background);
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* Custom premium scrollbars for dark industrial interface */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background-color: var(--color-background);
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #1F2937;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-muted);
+}
+
+/* Design Tokens Utilities for Industrial Look */
+.glass-panel {
+  background: rgba(17, 24, 39, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.glow-blue {
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.15);
+}
+
+.glow-red {
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.15);
+}
+
+.btn-primary {
+  @apply bg-primary hover:bg-primary-hover text-white font-medium text-sm px-4 py-2.5 rounded-lg transition-all active:scale-[0.98] cursor-pointer shadow-soft;
+}
+
+.btn-secondary {
+  @apply bg-secondary hover:bg-secondary-hover text-text font-medium text-sm px-4 py-2.5 rounded-lg transition-all active:scale-[0.98] cursor-pointer border border-border;
+}
+
+.btn-danger {
+  @apply bg-danger/10 hover:bg-danger text-danger hover:text-white font-medium text-sm px-4 py-2.5 rounded-lg transition-all active:scale-[0.98] cursor-pointer border border-danger/25;
+}
+
+.btn-success {
+  @apply bg-success/10 hover:bg-success text-success hover:text-white font-medium text-sm px-4 py-2.5 rounded-lg transition-all active:scale-[0.98] cursor-pointer border border-success/25;
+}
