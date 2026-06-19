@@ -16,7 +16,7 @@ console.log(`- Password Exists: ${process.env.DB_PASSWORD ? 'true' : 'false'}`);
 let isMockMode = false;
 
 // Create standard connection pool
-const realPool = mysql.createPool({
+const poolConfig = {
   host: process.env.DB_HOST || 'localhost',
   port: parseInt(process.env.DB_PORT || '3306', 10),
   user: process.env.DB_USER || 'root',
@@ -25,7 +25,17 @@ const realPool = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0
-});
+};
+
+// Add SSL support dynamically for cloud hosted databases (e.g. TiDB Cloud)
+if (process.env.DB_HOST && process.env.DB_HOST !== 'localhost' && process.env.DB_HOST !== '127.0.0.1') {
+  poolConfig.ssl = {
+    minVersion: 'TLSv1.2',
+    rejectUnauthorized: false
+  };
+}
+
+const realPool = mysql.createPool(poolConfig);
 
 // Mock database state for Demo/Mock mode fallback in serverless production
 const mockDb = {
