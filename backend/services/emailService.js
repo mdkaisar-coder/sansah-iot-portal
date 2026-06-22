@@ -355,16 +355,22 @@ async function verifyConnection() {
       return { success: true, details: 'Console logger active (fallback mode)' };
     }
 
-    await new Promise((resolve, reject) => {
-      activeTransporter.verify((err, success) => {
-        if (err) reject(err);
-        else resolve(success);
-      });
-    });
+    // Add a 3-second timeout to prevent server hanging if port is blocked by hosting provider
+    await Promise.race([
+      new Promise((resolve, reject) => {
+        activeTransporter.verify((err, success) => {
+          if (err) reject(err);
+          else resolve(success);
+        });
+      }),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('SMTP connection verification timed out (port 465 might be blocked by provider)')), 3000)
+      )
+    ]);
 
     return { success: true };
   } catch (err) {
-    console.error('EmailService SMTP Connection Verification failed:', err.message);
+    console.warn('[EmailService] SMTP Connection Verification failed:', err.message);
     return { success: false, error: err.message };
   }
 }
