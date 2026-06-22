@@ -1,5 +1,12 @@
 const nodemailer = require('nodemailer');
 const path = require('path');
+const dns = require('dns');
+
+// Force IPv4-first name resolution process-wide to bypass IPv6 ENETUNREACH in containerized hosting
+if (typeof dns.setDefaultResultOrder === 'function') {
+  dns.setDefaultResultOrder('ipv4first');
+}
+
 require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
 let transporter = null;
@@ -68,7 +75,10 @@ function getTransporter() {
       },
       connectionTimeout: 5000, // 5 seconds
       greetingTimeout: 5000,   // 5 seconds
-      socketTimeout: 5000      // 5 seconds
+      socketTimeout: 5000,     // 5 seconds
+      lookup: (hostname, options, callback) => {
+        return dns.lookup(hostname, { ...options, family: 4 }, callback);
+      }
     });
 
     console.log('EmailService: Initiating transporter connection verification...');
