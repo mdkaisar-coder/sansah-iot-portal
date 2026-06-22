@@ -9,24 +9,17 @@ if (resendApiKey) {
   console.log(`[Email Service Startup] RESEND_API_KEY is loaded. Initializing Resend client...`);
   resend = new Resend(resendApiKey);
 } else {
-  console.warn('[Email Service Startup] WARNING: RESEND_API_KEY is not set in environment. Falling back to Console Logger.');
+  console.error('[Email Service Startup] ERROR: RESEND_API_KEY is not set in environment. Production emails will fail.');
 }
 
 /**
- * Common helper to dispatch email via Resend API or console fallback
+ * Common helper to dispatch email via Resend API
  * @param {Object} options - Email options (from, to, subject, html, text)
  * @returns {Promise<Object>} - Resend send result
  */
 async function sendMailViaResend({ from, to, subject, html, text }) {
   if (!resend) {
-    console.log('\n--- EMAIL TRANSMISSION FALLBACK (CONSOLE) ---');
-    console.log(`From: ${from}`);
-    console.log(`To: ${Array.isArray(to) ? to.join(', ') : to}`);
-    console.log(`Subject: ${subject}`);
-    console.log('Body (HTML Preview):');
-    console.log(html.replace(/<[^>]*>/g, ' ').substring(0, 500) + '...');
-    console.log('---------------------------------------------\n');
-    return { id: 'console-fallback-' + Date.now() };
+    throw new Error('Resend API key is not configured. Email transmission failed.');
   }
 
   console.log(`Resend: Dispatching email to: ${Array.isArray(to) ? to.join(', ') : to} from: ${from}`);
@@ -77,19 +70,6 @@ async function sendAlertEmail(device, alert) {
       }
     } catch (dbErr) {
       console.warn('EmailService: Failed to query settings from DB, falling back to ENV/Defaults:', dbErr.message);
-    }
-
-    const recipients = [];
-    if (sendClient && device.alert_enabled && device.client_email) {
-      recipients.push(device.client_email);
-    }
-    if (sendAdmin && adminEmail) {
-      recipients.push(adminEmail);
-    }
-
-    if (recipients.length === 0) {
-      console.log(`EmailService: No recipients configured for device ${device.device_code}. Email skipped.`);
-      return false;
     }
 
     const severityColorMap = {
@@ -152,15 +132,47 @@ async function sendAlertEmail(device, alert) {
 
     // Resend free tier sandbox must use 'onboarding@resend.dev'
     const fromAddress = 'IoT Monitoring System <onboarding@resend.dev>';
+    let atLeastOneSent = false;
+    let errors = [];
 
-    await sendMailViaResend({
-      from: fromAddress,
-      to: recipients,
-      subject: `🚨 IoT Device Alert - ${device.device_name}`,
-      html: htmlContent
-    });
+    // Send to Admin (always required for all alerts)
+    const adminEmailTarget = adminEmail || process.env.ADMIN_EMAIL || 'mdkaisarmdkaisar933@gmail.com';
+    try {
+      console.log(`EmailService: Dispatching admin alert email to: ${adminEmailTarget}`);
+      await sendMailViaResend({
+        from: fromAddress,
+        to: adminEmailTarget,
+        subject: `🚨 IoT Device Alert - ${device.device_name}`,
+        html: htmlContent
+      });
+      atLeastOneSent = true;
+    } catch (err) {
+      console.error(`EmailService: Failed to send alert email to admin (${adminEmailTarget}):`, err.message);
+      errors.push(`Admin email error: ${err.message}`);
+    }
 
-    return true;
+    // Send to Client if enabled
+    if (sendClient && device.alert_enabled && device.client_email) {
+      try {
+        console.log(`EmailService: Dispatching client alert email to: ${device.client_email}`);
+        await sendMailViaResend({
+          from: fromAddress,
+          to: device.client_email,
+          subject: `🚨 IoT Device Alert - ${device.device_name}`,
+          html: htmlContent
+        });
+        atLeastOneSent = true;
+      } catch (err) {
+        console.error(`EmailService: Failed to send alert email to client (${device.client_email}):`, err.message);
+        errors.push(`Client email error: ${err.message}`);
+      }
+    }
+
+    if (errors.length > 0 && !atLeastOneSent) {
+      throw new Error(`Failed to send alert emails: ${errors.join('; ')}`);
+    }
+
+    return atLeastOneSent;
   } catch (err) {
     console.error('EmailService sendAlertEmail error:', err.message);
     return false;
@@ -230,7 +242,7 @@ async function sendTestEmail(targetEmail) {
  */
 async function verifyConnection() {
   if (!resend) {
-    return { success: true, details: 'Console logger active (fallback mode)' };
+    return { success: false, error: 'Resend API key is not configured' };
   }
 
   try {
