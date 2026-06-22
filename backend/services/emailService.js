@@ -20,7 +20,7 @@ let smtpConfigUsed = {
   error: null
 };
 
-function getTransporter() {
+async function getTransporter() {
   if (transporter) return transporter;
 
   const user = process.env.EMAIL_USER;
@@ -32,7 +32,7 @@ function getTransporter() {
   console.log(`[Email Service Startup] EMAIL_PASS is loaded: ${pass ? 'YES (Confidential)' : 'NO'}`);
 
   if (user && pass) {
-    const host = process.env.SMTP_HOST || 'smtp.gmail.com';
+    let host = process.env.SMTP_HOST || 'smtp.gmail.com';
     const port = parseInt(process.env.SMTP_PORT || '587', 10);
     // If secure is not specified, it is true for port 465 and false for port 587
     const secure = process.env.SMTP_SECURE !== undefined 
@@ -44,8 +44,23 @@ function getTransporter() {
       ? process.env.SMTP_REQUIRE_TLS === 'true'
       : (port === 587 || !secure);
 
+    const originalHost = host;
+    
+    // Explicitly resolve the hostname to an IPv4 address to completely bypass Node/Nodemailer IPv6 ENETUNREACH resolution attempts
+    try {
+      console.log(`EmailService: Resolving SMTP host ${host} to IPv4...`);
+      const addresses = await dns.promises.resolve4(host);
+      if (addresses && addresses.length > 0) {
+        host = addresses[0];
+        console.log(`EmailService: Host ${originalHost} resolved to IPv4: ${host}`);
+      }
+    } catch (dnsErr) {
+      console.warn(`EmailService: DNS resolve4 failed for ${originalHost}, falling back to hostname:`, dnsErr.message);
+    }
+
     smtpConfigUsed = {
-      host,
+      host: originalHost,
+      resolvedIp: host,
       port,
       secure,
       requireTLS,
@@ -55,7 +70,8 @@ function getTransporter() {
     };
 
     console.log('EmailService: Creating SMTP transporter with settings:');
-    console.log(`- Host: ${host}`);
+    console.log(`- Original Host: ${originalHost}`);
+    console.log(`- Resolved IP (Host): ${host}`);
     console.log(`- Port: ${port}`);
     console.log(`- Secure (SSL/TLS): ${secure}`);
     console.log(`- RequireTLS (STARTTLS): ${requireTLS}`);
@@ -71,14 +87,12 @@ function getTransporter() {
         pass
       },
       tls: {
-        rejectUnauthorized: false // avoids certificate validation warnings
+        rejectUnauthorized: false, // avoids certificate validation warnings
+        servername: originalHost // Set SNI server name to SMTP server domain to pass certificate validation on direct IP connection
       },
       connectionTimeout: 15000, // 15 seconds
       greetingTimeout: 15000,   // 15 seconds
-      socketTimeout: 15000,     // 15 seconds
-      lookup: (hostname, options, callback) => {
-        return dns.lookup(hostname, { ...options, family: 4 }, callback);
-      }
+      socketTimeout: 15000      // 15 seconds
     });
 
     console.log('EmailService: Initiating transporter connection verification...');
@@ -130,7 +144,7 @@ function getTransporter() {
  */
 async function sendAlertEmail(device, alert) {
   try {
-    const activeTransporter = getTransporter();
+    const activeTransporter = await getTransporter();
     
     // Fetch email configurations dynamically from database settings
     let sendAdmin = true;
@@ -376,7 +390,7 @@ async function sendTestEmail(targetEmail) {
     throw new Error('ADMIN_EMAIL is not configured in settings or environment.');
   }
 
-  const activeTransporter = getTransporter();
+  const activeTransporter = await getTransporter();
   const mailOptions = {
     from: `"IoT Monitoring System - Test" <${process.env.EMAIL_USER || 'no-reply@iot.com'}>`,
     to: adminEmail,
@@ -415,7 +429,7 @@ async function sendTestEmail(targetEmail) {
  */
 async function verifyConnection() {
   try {
-    const activeTransporter = getTransporter();
+    const activeTransporter = await getTransporter();
     
     // Check if fallback console transporter is used
     if (activeTransporter.sendMail && !activeTransporter.verify) {
@@ -447,7 +461,7 @@ async function verifyConnection() {
 
 async function sendDemoTestAlertEmail(device, alert, recipientEmail) {
   try {
-    const activeTransporter = getTransporter();
+    const activeTransporter = await getTransporter();
     const timestampStr = new Date().toLocaleString();
 
     const textContent = `This is a demonstration alert generated from Force Test Mode.
