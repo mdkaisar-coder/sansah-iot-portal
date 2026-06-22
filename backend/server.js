@@ -74,14 +74,14 @@ app.get(['/health', '/api/health'], async (req, res) => {
     dbError = err.message;
   }
 
-  // Verify SMTP connection
-  const smtpVerification = await emailService.verifyConnection();
-  const smtpStatus = smtpVerification.success ? 'connected' : 'disconnected';
+  // Verify Resend connection status
+  const emailVerification = await emailService.verifyConnection();
+  const emailStatus = emailVerification.success ? 'connected' : 'disconnected';
 
   res.status(dbStatus === 'error' ? 500 : 200).json({
     status: 'healthy',
     database: dbStatus,
-    smtp: smtpStatus,
+    email: emailStatus,
     uptime: `${Math.floor(process.uptime())}s`,
     timestamp: new Date(),
     details: {
@@ -89,9 +89,9 @@ app.get(['/health', '/api/health'], async (req, res) => {
         isMockMode: getIsMockMode(),
         error: dbError
       },
-      smtp: {
-        error: smtpVerification.error || null,
-        details: smtpVerification.details || null
+      email: {
+        error: emailVerification.error || null,
+        details: emailVerification.details || null
       },
       nodeVersion: process.version
     }
@@ -114,12 +114,8 @@ app.get('/api/test-email', async (req, res) => {
   console.log(`[HTTP GET] /api/test-email: Initiating test email request to: ${target || 'Default ADMIN_EMAIL'}`);
   
   const envVerify = {
-    EMAIL_USER: process.env.EMAIL_USER ? `${process.env.EMAIL_USER.substring(0, 4)}... (len: ${process.env.EMAIL_USER.length})` : 'NOT SET',
-    EMAIL_PASS_MASKED: process.env.EMAIL_PASS ? `${process.env.EMAIL_PASS.replace(/\s+/g, '').substring(0, 3)}...${process.env.EMAIL_PASS.replace(/\s+/g, '').slice(-3)} (len: ${process.env.EMAIL_PASS.length})` : 'NOT SET',
-    ADMIN_EMAIL: process.env.ADMIN_EMAIL ? `${process.env.ADMIN_EMAIL.substring(0, 4)}... (len: ${process.env.ADMIN_EMAIL.length})` : 'NOT SET',
-    SMTP_HOST: process.env.SMTP_HOST || 'DEFAULT (smtp.gmail.com)',
-    SMTP_PORT: process.env.SMTP_PORT || 'DEFAULT (587)',
-    SMTP_SECURE: process.env.SMTP_SECURE || 'DEFAULT (false)'
+    RESEND_API_KEY: process.env.RESEND_API_KEY ? `${process.env.RESEND_API_KEY.substring(0, 5)}...${process.env.RESEND_API_KEY.slice(-5)} (len: ${process.env.RESEND_API_KEY.length})` : 'NOT SET',
+    ADMIN_EMAIL: process.env.ADMIN_EMAIL ? `${process.env.ADMIN_EMAIL.substring(0, 4)}... (len: ${process.env.ADMIN_EMAIL.length})` : 'NOT SET'
   };
 
   try {
@@ -138,13 +134,13 @@ app.get('/api/test-email', async (req, res) => {
     console.error('❌ GET /api/test-email Route Error:', error.message);
     console.error(error.stack);
     const emailService = require('./services/emailService');
-    const smtpVerification = await emailService.verifyConnection();
+    const emailVerification = await emailService.verifyConnection();
     res.status(500).json({
       success: false,
       message: 'Failed to send test email via GET.',
       error: error.message,
       stack: error.stack,
-      smtpVerification,
+      emailVerification,
       envVerify
     });
   }
@@ -154,12 +150,8 @@ app.post('/api/test-email', async (req, res) => {
   console.log('[HTTP POST] /api/test-email: Initiating test email request');
   
   const envVerify = {
-    EMAIL_USER: process.env.EMAIL_USER ? `${process.env.EMAIL_USER.substring(0, 4)}... (len: ${process.env.EMAIL_USER.length})` : 'NOT SET',
-    EMAIL_PASS_MASKED: process.env.EMAIL_PASS ? `${process.env.EMAIL_PASS.replace(/\s+/g, '').substring(0, 3)}...${process.env.EMAIL_PASS.replace(/\s+/g, '').slice(-3)} (len: ${process.env.EMAIL_PASS.length})` : 'NOT SET',
-    ADMIN_EMAIL: process.env.ADMIN_EMAIL ? `${process.env.ADMIN_EMAIL.substring(0, 4)}... (len: ${process.env.ADMIN_EMAIL.length})` : 'NOT SET',
-    SMTP_HOST: process.env.SMTP_HOST || 'DEFAULT (smtp.gmail.com)',
-    SMTP_PORT: process.env.SMTP_PORT || 'DEFAULT (587)',
-    SMTP_SECURE: process.env.SMTP_SECURE || 'DEFAULT (false)'
+    RESEND_API_KEY: process.env.RESEND_API_KEY ? `${process.env.RESEND_API_KEY.substring(0, 5)}...${process.env.RESEND_API_KEY.slice(-5)} (len: ${process.env.RESEND_API_KEY.length})` : 'NOT SET',
+    ADMIN_EMAIL: process.env.ADMIN_EMAIL ? `${process.env.ADMIN_EMAIL.substring(0, 4)}... (len: ${process.env.ADMIN_EMAIL.length})` : 'NOT SET'
   };
 
   try {
@@ -178,13 +170,13 @@ app.post('/api/test-email', async (req, res) => {
     console.error('❌ POST /api/test-email Route Error:', error.message);
     console.error(error.stack);
     const emailService = require('./services/emailService');
-    const smtpVerification = await emailService.verifyConnection();
+    const emailVerification = await emailService.verifyConnection();
     res.status(500).json({
       success: false,
       message: 'Failed to send test email.',
       error: error.message,
       stack: error.stack,
-      smtpVerification,
+      emailVerification,
       envVerify
     });
   }
