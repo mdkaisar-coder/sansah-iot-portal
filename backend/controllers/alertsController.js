@@ -1,4 +1,5 @@
 const alertsService = require('../services/alertsService');
+const auditService = require('../services/auditService');
 
 // @desc    Get all alerts with pagination and filters
 // @route   GET /api/alerts
@@ -70,6 +71,16 @@ const acknowledgeAlert = async (req, res, next) => {
       });
     }
 
+    if (req.user) {
+      await auditService.logAction(
+        req.user.id,
+        req.user.full_name,
+        'ALERT_ACKNOWLEDGE',
+        `Acknowledged alert ID ${id} for device ${updated.device_name || updated.device_id}`,
+        req.ip
+      );
+    }
+
     res.status(200).json({
       success: true,
       message: 'Alert acknowledged successfully.',
@@ -91,6 +102,16 @@ const resolveAlert = async (req, res, next) => {
         success: false,
         message: `Alert with ID ${id} not found.`
       });
+    }
+
+    if (req.user) {
+      await auditService.logAction(
+        req.user.id,
+        req.user.full_name,
+        'ALERT_RESOLUTION',
+        `Resolved alert ID ${id} for device ${updated.device_name || updated.device_id}`,
+        req.ip
+      );
     }
 
     res.status(200).json({

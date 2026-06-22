@@ -23,6 +23,16 @@ import {
   Layers,
   Info
 } from 'lucide-react';
+import { 
+  ResponsiveContainer, 
+  LineChart, 
+  Line, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  Legend 
+} from 'recharts';
 import { api } from '../services/api';
 import { useTelemetryPolling } from '../hooks/useTelemetryPolling';
 import StatusBadge from '../components/StatusBadge';
@@ -81,6 +91,7 @@ export default function SensorMonitoring() {
   const { 
     telemetry, 
     activeAlerts, 
+    history,
     lastUpdated, 
     loading: telemetryLoading, 
     error: telemetryError 
@@ -88,6 +99,22 @@ export default function SensorMonitoring() {
     selectedDeviceId, 
     selectedDevice ? selectedDevice.status : 'Offline'
   );
+
+  const chartData = useMemo(() => {
+    if (!history || history.length === 0) return [];
+    const groups = {};
+    history.forEach(row => {
+      const timeStr = new Date(row.recorded_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      if (!groups[timeStr]) {
+        groups[timeStr] = { time: timeStr };
+      }
+      const val = parseFloat(row.sensor_value);
+      if (!isNaN(val)) {
+        groups[timeStr][row.sensor_name] = val;
+      }
+    });
+    return Object.values(groups).reverse();
+  }, [history]);
 
   // Compute time ago counter
   useEffect(() => {
@@ -525,6 +552,48 @@ export default function SensorMonitoring() {
                     </div>
                   )}
                 </div>
+              </div>
+
+              {/* Telemetry Chart Panel */}
+              <div className="bg-card border border-border rounded-xl p-6 shadow-soft">
+                <h3 className="font-display text-xs font-bold text-text uppercase tracking-wider mb-4 flex items-center space-x-2">
+                  <Activity className="w-4 h-4 text-primary animate-pulse" />
+                  <span>Telemetry Analytics (Last 24 Hours / Live Trend)</span>
+                </h3>
+                {chartData.length === 0 ? (
+                  <div className="py-20 text-center text-muted font-medium text-xs">
+                    No historical readings available for trend charts.
+                  </div>
+                ) : (
+                  <div className="h-[280px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#1F2937" />
+                        <XAxis dataKey="time" stroke="#9CA3AF" fontSize={10} />
+                        <YAxis stroke="#9CA3AF" fontSize={10} />
+                        <Tooltip contentStyle={{ backgroundColor: '#0F172A', borderColor: '#1F2937', color: '#F3F4F6' }} />
+                        <Legend wrapperStyle={{ fontSize: 10, fontWeight: 'bold' }} />
+                        {Object.keys(chartData[0] || {})
+                          .filter(k => k !== 'time')
+                          .map((metric, i) => {
+                            const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
+                            const color = colors[i % colors.length];
+                            return (
+                              <Line
+                                key={metric}
+                                type="monotone"
+                                dataKey={metric}
+                                stroke={color}
+                                strokeWidth={2.5}
+                                dot={false}
+                                activeDot={{ r: 4 }}
+                              />
+                            );
+                          })}
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
               </div>
 
               {/* Spacing adjustments: Spilt telemetry cards vs Alerts logs panel */}

@@ -32,7 +32,7 @@ const errorHandler = (err, req, res, next) => {
         message = 'Database connection refused.';
         break;
       default:
-        message = `Database error occurred: ${err.sqlMessage || err.message}`;
+        message = 'A database error occurred. Internal details have been masked.';
     }
   }
 

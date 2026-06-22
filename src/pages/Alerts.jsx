@@ -160,7 +160,11 @@ export default function Alerts() {
         <div className="bg-card border border-border rounded-xl p-6 flex items-center justify-between shadow-soft hover:border-primary/20 hover:scale-[1.02] transition-all duration-300 border-l-4 border-l-muted group">
           <div className="space-y-1">
             <span className="text-[10px] text-muted font-bold uppercase tracking-wider block">Total Alerts</span>
-            <span className="text-3xl font-extrabold font-display text-text block leading-tight">{stats.total}</span>
+            {loading ? (
+              <div className="h-8 bg-secondary rounded w-12 animate-pulse mt-1"></div>
+            ) : (
+              <span className="text-3xl font-extrabold font-display text-text block leading-tight">{stats.total}</span>
+            )}
           </div>
           <div className="p-3.5 bg-secondary/40 text-muted rounded-xl border border-border group-hover:scale-110 transition-transform">
             <HelpCircle className="w-5 h-5" />
@@ -171,7 +175,11 @@ export default function Alerts() {
         <div className="bg-card border border-border rounded-xl p-6 flex items-center justify-between shadow-soft hover:border-danger/20 hover:scale-[1.02] transition-all duration-300 border-l-4 border-l-danger group">
           <div className="space-y-1">
             <span className="text-[10px] text-muted font-bold uppercase tracking-wider block">Active Alerts</span>
-            <span className="text-3xl font-extrabold font-display text-text block leading-tight">{stats.active}</span>
+            {loading ? (
+              <div className="h-8 bg-secondary rounded w-12 animate-pulse mt-1"></div>
+            ) : (
+              <span className="text-3xl font-extrabold font-display text-text block leading-tight">{stats.active}</span>
+            )}
           </div>
           <div className="p-3.5 bg-danger/10 text-danger rounded-xl border border-danger/20 group-hover:scale-110 transition-transform">
             <AlertTriangle className="w-5 h-5 animate-pulse" />
@@ -182,7 +190,11 @@ export default function Alerts() {
         <div className="bg-card border border-border rounded-xl p-6 flex items-center justify-between shadow-soft hover:border-danger/30 hover:scale-[1.02] transition-all duration-300 border-l-4 border-l-danger group">
           <div className="space-y-1">
             <span className="text-[10px] text-muted font-bold uppercase tracking-wider block">Critical</span>
-            <span className="text-3xl font-extrabold font-display text-text block leading-tight">{stats.critical}</span>
+            {loading ? (
+              <div className="h-8 bg-secondary rounded w-12 animate-pulse mt-1"></div>
+            ) : (
+              <span className="text-3xl font-extrabold font-display text-text block leading-tight">{stats.critical}</span>
+            )}
           </div>
           <div className="p-3.5 bg-danger/15 text-danger rounded-xl border border-danger/25 group-hover:scale-110 transition-transform">
             <ShieldAlert className="w-5 h-5" />
@@ -193,7 +205,11 @@ export default function Alerts() {
         <div className="bg-card border border-border rounded-xl p-6 flex items-center justify-between shadow-soft hover:border-success/20 hover:scale-[1.02] transition-all duration-300 border-l-4 border-l-success group">
           <div className="space-y-1">
             <span className="text-[10px] text-muted font-bold uppercase tracking-wider block">Resolved</span>
-            <span className="text-3xl font-extrabold font-display text-text block leading-tight">{stats.resolved}</span>
+            {loading ? (
+              <div className="h-8 bg-secondary rounded w-12 animate-pulse mt-1"></div>
+            ) : (
+              <span className="text-3xl font-extrabold font-display text-text block leading-tight">{stats.resolved}</span>
+            )}
           </div>
           <div className="p-3.5 bg-success/10 text-success rounded-xl border border-success/20 group-hover:scale-110 transition-transform">
             <CheckCircle2 className="w-5 h-5" />
@@ -263,67 +279,83 @@ export default function Alerts() {
         <div className="space-y-4">
           <div className="bg-card border border-border rounded-xl overflow-hidden shadow-soft">
             <TableComponent headers={['Device', 'Client', 'Project', 'Metric', 'Current Value', 'Threshold', 'Severity', 'Status', 'Created Time', 'Actions']}>
-              {alertsList.map((alert) => (
-                <tr key={alert.id} className="hover:bg-secondary/20 transition-all border-b border-border/40 last:border-b-0">
-                  <td className="px-6 py-4">
-                    <div className="font-semibold text-text text-sm">{alert.device_name}</div>
-                    <div className="text-[10px] text-muted font-mono mt-0.5 tracking-wider uppercase">{alert.device_code || 'N/A'}</div>
-                  </td>
-                  <td className="px-6 py-4 text-xs font-semibold text-text">{alert.client_name || 'N/A'}</td>
-                  <td className="px-6 py-4 text-xs text-muted font-medium">{alert.project_name || 'N/A'}</td>
-                  <td className="px-6 py-4 text-xs font-semibold font-mono text-text">{alert.metric_name}</td>
-                  <td className="px-6 py-4 text-xs font-bold font-mono text-danger">{alert.metric_value}</td>
-                  <td className="px-6 py-4 text-xs font-mono text-muted">{alert.threshold_value}</td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${getSeverityBadgeClass(alert.severity)}`}>
-                      {alert.severity}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${getStatusBadgeClass(alert.status)}`}>
-                      {alert.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-muted text-xs font-mono">
-                    {new Date(alert.created_at).toLocaleString()}
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => setSelectedAlert(alert)}
-                        title="View Details"
-                        className="p-1.5 hover:bg-secondary text-primary rounded-md transition-colors cursor-pointer border border-transparent hover:border-border"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
-                      {alert.status === 'Active' && (
-                        <button
-                          onClick={() => handleAcknowledge(alert.id)}
-                          title="Acknowledge Alert"
-                          className="p-1.5 hover:bg-secondary text-warning rounded-md transition-colors cursor-pointer border border-transparent hover:border-border"
-                        >
-                          <Clock className="w-4 h-4" />
-                        </button>
-                      )}
-                      {alert.status !== 'Resolved' && (
-                        <button
-                          onClick={() => handleResolve(alert.id)}
-                          title="Resolve Alert"
-                          className="p-1.5 hover:bg-secondary text-success rounded-md transition-colors cursor-pointer border border-transparent hover:border-border"
-                        >
-                          <Check className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {alertsList.length === 0 && (
+              {loading ? (
+                Array.from({ length: limit }).map((_, idx) => (
+                  <tr key={idx} className="animate-pulse border-b border-border/40">
+                    <td className="px-6 py-4"><div className="h-4 bg-secondary rounded w-24"></div></td>
+                    <td className="px-6 py-4"><div className="h-4 bg-secondary rounded w-16"></div></td>
+                    <td className="px-6 py-4"><div className="h-4 bg-secondary rounded w-20"></div></td>
+                    <td className="px-6 py-4"><div className="h-4 bg-secondary rounded w-16"></div></td>
+                    <td className="px-6 py-4"><div className="h-4 bg-secondary rounded w-12 font-mono"></div></td>
+                    <td className="px-6 py-4"><div className="h-4 bg-secondary rounded w-12 font-mono"></div></td>
+                    <td className="px-6 py-4"><div className="h-6 bg-secondary rounded-md w-16"></div></td>
+                    <td className="px-6 py-4"><div className="h-6 bg-secondary rounded-md w-16"></div></td>
+                    <td className="px-6 py-4"><div className="h-4 bg-secondary rounded w-24"></div></td>
+                    <td className="px-6 py-4"><div className="h-8 bg-secondary rounded w-16"></div></td>
+                  </tr>
+                ))
+              ) : alertsList.length === 0 ? (
                 <tr>
                   <td colSpan="10" className="px-6 py-12 text-center text-muted text-sm font-semibold bg-card leading-relaxed">
                     No registered alarm incidents logged.
                   </td>
                 </tr>
+              ) : (
+                alertsList.map((alert) => (
+                  <tr key={alert.id} className="hover:bg-secondary/20 transition-all border-b border-border/40 last:border-b-0">
+                    <td className="px-6 py-4">
+                      <div className="font-semibold text-text text-sm">{alert.device_name}</div>
+                      <div className="text-[10px] text-muted font-mono mt-0.5 tracking-wider uppercase">{alert.device_code || 'N/A'}</div>
+                    </td>
+                    <td className="px-6 py-4 text-xs font-semibold text-text">{alert.client_name || 'N/A'}</td>
+                    <td className="px-6 py-4 text-xs text-muted font-medium">{alert.project_name || 'N/A'}</td>
+                    <td className="px-6 py-4 text-xs font-semibold font-mono text-text">{alert.metric_name}</td>
+                    <td className="px-6 py-4 text-xs font-bold font-mono text-danger">{alert.metric_value}</td>
+                    <td className="px-6 py-4 text-xs font-mono text-muted">{alert.threshold_value}</td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${getSeverityBadgeClass(alert.severity)}`}>
+                        {alert.severity}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${getStatusBadgeClass(alert.status)}`}>
+                        {alert.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-muted text-xs font-mono">
+                      {new Date(alert.created_at).toLocaleString()}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => setSelectedAlert(alert)}
+                          title="View Details"
+                          className="p-1.5 hover:bg-secondary text-primary rounded-md transition-colors cursor-pointer border border-transparent hover:border-border"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        {alert.status === 'Active' && (
+                          <button
+                            onClick={() => handleAcknowledge(alert.id)}
+                            title="Acknowledge Alert"
+                            className="p-1.5 hover:bg-secondary text-warning rounded-md transition-colors cursor-pointer border border-transparent hover:border-border"
+                          >
+                            <Clock className="w-4 h-4" />
+                          </button>
+                        )}
+                        {alert.status !== 'Resolved' && (
+                          <button
+                            onClick={() => handleResolve(alert.id)}
+                            title="Resolve Alert"
+                            className="p-1.5 hover:bg-secondary text-success rounded-md transition-colors cursor-pointer border border-transparent hover:border-border"
+                          >
+                            <Check className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
               )}
             </TableComponent>
           </div>

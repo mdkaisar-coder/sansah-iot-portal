@@ -1,4 +1,5 @@
 const devicesService = require('../services/devicesService');
+const auditService = require('../services/auditService');
 
 // @desc    Get all devices
 // @route   GET /api/devices
@@ -51,6 +52,16 @@ const createDevice = async (req, res, next) => {
     }
 
     const device = await devicesService.createDevice(req.body);
+    if (req.user) {
+      await auditService.logAction(
+        req.user.id,
+        req.user.full_name,
+        'CREATE_DEVICE',
+        `Created device: ${device.device_name} (Code: ${device.device_code})`,
+        req.ip
+      );
+    }
+
     res.status(201).json({
       success: true,
       message: 'Device created successfully.',
@@ -89,6 +100,16 @@ const updateDevice = async (req, res, next) => {
     }
 
     const device = await devicesService.updateDevice(id, req.body);
+    if (req.user) {
+      await auditService.logAction(
+        req.user.id,
+        req.user.full_name,
+        'UPDATE_DEVICE',
+        `Updated device: ${device.device_name} (Code: ${device.device_code})`,
+        req.ip
+      );
+    }
+
     res.status(200).json({
       success: true,
       message: 'Device updated successfully.',
@@ -104,6 +125,7 @@ const updateDevice = async (req, res, next) => {
 const deleteDevice = async (req, res, next) => {
   const { id } = req.params;
   try {
+    const existing = await devicesService.getDeviceById(id);
     const success = await devicesService.deleteDevice(id);
     if (!success) {
       return res.status(404).json({
@@ -111,6 +133,17 @@ const deleteDevice = async (req, res, next) => {
         message: `Device with ID ${id} not found.`
       });
     }
+
+    if (req.user && existing) {
+      await auditService.logAction(
+        req.user.id,
+        req.user.full_name,
+        'DELETE_DEVICE',
+        `Deleted device: ${existing.device_name} (Code: ${existing.device_code})`,
+        req.ip
+      );
+    }
+
     res.status(200).json({
       success: true,
       message: `Device with ID ${id} has been deleted.`

@@ -98,13 +98,17 @@ app.get(['/health', '/api/health'], async (req, res) => {
   });
 });
 
+const { requireAuth } = require('./middleware/auth');
+const auditLogsRouter = require('./routes/auditLogs');
+
 // Mount Routes
-app.use('/api/devices', devicesRouter);
-app.use('/api/users', usersRouter);
-app.use('/api/alerts', alertsRouter);
-app.use('/api/sensors', sensorsRouter);
-app.use('/api/dashboard', dashboardRouter);
-app.use('/api/settings', settingsRouter);
+app.use('/api/devices', requireAuth, devicesRouter);
+app.use('/api/users', usersRouter); // routes inside usersRouter are selectively protected/public
+app.use('/api/alerts', requireAuth, alertsRouter);
+app.use('/api/sensors', requireAuth, sensorsRouter);
+app.use('/api/dashboard', requireAuth, dashboardRouter);
+app.use('/api/settings', requireAuth, settingsRouter);
+app.use('/api/audit-logs', requireAuth, auditLogsRouter);
 
 // Test Email Endpoint
 const { sendTestEmail } = require('./services/emailService');
@@ -142,7 +146,6 @@ app.get('/api/test-email', async (req, res) => {
       success: false,
       message: 'Failed to send test email via GET.',
       error: error.message,
-      stack: error.stack,
       emailVerification,
       envVerify
     });
@@ -181,7 +184,6 @@ app.post('/api/test-email', async (req, res) => {
       success: false,
       message: 'Failed to send test email.',
       error: error.message,
-      stack: error.stack,
       emailVerification,
       envVerify
     });

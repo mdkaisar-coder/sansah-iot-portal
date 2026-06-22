@@ -32,8 +32,12 @@ const BASE_URL = getBaseUrl();
  */
 async function apiFetch(endpoint, options = {}) {
   const url = `${BASE_URL}${endpoint}`;
+  
+  // Attach JWT token dynamically
+  const token = localStorage.getItem('token');
   const headers = {
     'Content-Type': 'application/json',
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
     ...(options.headers || {})
   };
 
@@ -47,6 +51,16 @@ async function apiFetch(endpoint, options = {}) {
     
     // Request succeeded, backend is online
     apiStatus.setOffline(false);
+
+    // If 401 Unauthorized, automatically log out (except during login)
+    if (res.status === 401 && endpoint !== '/users/login') {
+      localStorage.removeItem('token');
+      localStorage.removeItem('isAuthenticated');
+      localStorage.removeItem('user');
+      if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
+    }
     
     // Attempt parsing JSON
     let data = null;
@@ -119,10 +133,24 @@ export const api = {
   resolveAlert: (id) => apiFetch(`/alerts/${id}/resolve`, {
     method: 'PUT'
   }),
+  
+  // Users / Auth
   loginUser: (email, password) => apiFetch('/users/login', {
     method: 'POST',
     body: JSON.stringify({ email, password })
   }),
+  logoutUser: () => apiFetch('/users/logout', {
+    method: 'POST'
+  }),
+  
+  // Audit Logs
+  fetchAuditLogs: ({ page = 1, limit = 10, search = '', action = '' } = {}) => {
+    let query = `/audit-logs?page=${page}&limit=${limit}`;
+    if (search) query += `&search=${encodeURIComponent(search)}`;
+    if (action) query += `&action=${encodeURIComponent(action)}`;
+    return apiFetch(query);
+  },
+
   triggerTestSpike: (deviceId) => apiFetch(`/devices/${deviceId}/test-spike`, {
     method: 'POST'
   }),

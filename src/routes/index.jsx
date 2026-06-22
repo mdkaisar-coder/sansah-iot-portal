@@ -9,6 +9,7 @@ import DeviceDetails from '../pages/DeviceDetails';
 import SensorMonitoring from '../pages/SensorMonitoring';
 import Alerts from '../pages/Alerts';
 import Settings from '../pages/Settings';
+import AuditLogs from '../pages/AuditLogs';
 import ErrorBoundary from '../components/ErrorBoundary';
 
 export const router = createBrowserRouter([
@@ -51,6 +52,10 @@ export const router = createBrowserRouter([
       {
         path: 'alerts',
         element: <Alerts />,
+      },
+      {
+        path: 'audit-logs',
+        element: <AuditLogs />,
       },
       {
         path: 'settings',

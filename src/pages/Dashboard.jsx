@@ -69,8 +69,55 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div>
+      <div className="space-y-6 sm:space-y-8 animate-pulse">
+        {/* Title skeleton */}
+        <div className="space-y-2">
+          <div className="h-8 bg-secondary rounded w-1/4"></div>
+          <div className="h-4 bg-secondary rounded w-1/3"></div>
+        </div>
+
+        {/* Stats Grid skeleton */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {Array.from({ length: 4 }).map((_, idx) => (
+            <div key={idx} className="bg-card border border-border rounded-xl p-6 h-28 flex flex-col justify-between">
+              <div className="flex justify-between items-center">
+                <div className="h-4 bg-secondary rounded w-1/2"></div>
+                <div className="h-8 bg-secondary rounded-lg w-8"></div>
+              </div>
+              <div className="h-6 bg-secondary rounded w-1/3 mt-2"></div>
+            </div>
+          ))}
+        </div>
+
+        {/* Lower Grid skeleton */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+          <div className="lg:col-span-2 bg-card border border-border rounded-xl p-6 h-96 space-y-4">
+            <div className="h-6 bg-secondary rounded w-1/4"></div>
+            <div className="space-y-3 pt-4">
+              {Array.from({ length: 5 }).map((_, idx) => (
+                <div key={idx} className="flex justify-between items-center border-b border-border/40 pb-3">
+                  <div className="h-4 bg-secondary rounded w-1/3"></div>
+                  <div className="h-4 bg-secondary rounded w-1/4"></div>
+                  <div className="h-6 bg-secondary rounded-full w-16"></div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="bg-card border border-border rounded-xl p-6 h-96 space-y-4">
+            <div className="h-6 bg-secondary rounded w-1/3"></div>
+            <div className="space-y-4 pt-4">
+              {Array.from({ length: 4 }).map((_, idx) => (
+                <div key={idx} className="space-y-2">
+                  <div className="flex justify-between">
+                    <div className="h-4 bg-secondary rounded w-1/3"></div>
+                    <div className="h-4 bg-secondary rounded w-1/12"></div>
+                  </div>
+                  <div className="h-2 bg-secondary rounded w-full"></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
     );
   }

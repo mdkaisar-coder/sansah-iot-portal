@@ -2,11 +2,12 @@ const { pool } = require('../db');
 const { generateTelemetryOnDemand } = require('./telemetryService');
 
 class SensorsService {
-  async getSensors(deviceId) {
+  async getSensors(deviceId, { page = 1, limit = 100 } = {}) {
     // Trigger on-demand telemetry generation check
     await generateTelemetryOnDemand(deviceId);
 
-    let query = `
+    let countQuery = 'SELECT COUNT(*) as total FROM sensor_data s';
+    let selectQuery = `
       SELECT 
         s.id, 
         s.device_id, 
@@ -18,15 +19,32 @@ class SensorsService {
       FROM sensor_data s
       LEFT JOIN devices d ON s.device_id = d.id
     `;
-    let params = [];
+    let countParams = [];
+    let selectParams = [];
     if (deviceId) {
-      query += ` WHERE s.device_id = ?`;
-      params.push(deviceId);
+      countQuery += ` WHERE s.device_id = ?`;
+      selectQuery += ` WHERE s.device_id = ?`;
+      countParams.push(deviceId);
+      selectParams.push(deviceId);
     }
-    query += ` ORDER BY s.recorded_at DESC`;
 
-    const [sensors] = await pool.query(query, params);
-    return sensors;
+    const pageNum = parseInt(page, 10) || 1;
+    const limitNum = parseInt(limit, 10) || 100;
+    const offsetNum = (pageNum - 1) * limitNum;
+
+    selectQuery += ` ORDER BY s.recorded_at DESC LIMIT ? OFFSET ?`;
+    selectParams.push(limitNum, offsetNum);
+
+    const [[{ total }]] = await pool.query(countQuery, countParams);
+    const [sensors] = await pool.query(selectQuery, selectParams);
+
+    return {
+      total,
+      page: pageNum,
+      limit: limitNum,
+      totalPages: Math.ceil(total / limitNum),
+      data: sensors
+    };
   }
 
   async checkDeviceExists(deviceId) {

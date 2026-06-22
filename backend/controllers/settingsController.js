@@ -1,6 +1,7 @@
 const settingsService = require('../services/settingsService');
 const emailService = require('../services/emailService');
 const { pool } = require('../db');
+const auditService = require('../services/auditService');
 
 // @desc    Get all settings configuration
 // @route   GET /api/settings
@@ -54,6 +55,16 @@ const updateAdmin = async (req, res, next) => {
     // 2. Perform credential update
     await settingsService.updateAdminCredentials(username.trim(), password);
 
+    if (req.user) {
+      await auditService.logAction(
+        req.user.id,
+        req.user.full_name,
+        'SETTINGS_CHANGE',
+        `Admin credentials updated. Username: ${username}`,
+        req.ip
+      );
+    }
+
     res.status(200).json({
       success: true,
       message: 'Admin credentials updated successfully.'
@@ -83,6 +94,16 @@ const updateEmail = async (req, res, next) => {
       send_admin_emails: send_admin_emails === true || send_admin_emails === 'true',
       send_client_emails: send_client_emails === true || send_client_emails === 'true'
     });
+
+    if (req.user) {
+      await auditService.logAction(
+        req.user.id,
+        req.user.full_name,
+        'SETTINGS_CHANGE',
+        `Email settings updated. Admin Email: ${admin_email.trim()}, Send Admin: ${send_admin_emails}, Send Client: ${send_client_emails}`,
+        req.ip
+      );
+    }
 
     res.status(200).json({
       success: true,

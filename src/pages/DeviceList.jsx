@@ -100,8 +100,40 @@ export default function DeviceList() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div>
+      <div className="space-y-6 sm:space-y-8 animate-pulse">
+        {/* Title skeleton */}
+        <div className="space-y-2">
+          <div className="h-8 bg-secondary rounded w-1/4"></div>
+          <div className="h-4 bg-secondary rounded w-1/3"></div>
+        </div>
+
+        {/* Filter panel skeleton */}
+        <div className="bg-card border border-border rounded-xl p-6 h-28 flex flex-col justify-between">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="h-10 bg-secondary rounded md:col-span-2"></div>
+            <div className="h-10 bg-secondary rounded"></div>
+            <div className="h-10 bg-secondary rounded"></div>
+          </div>
+        </div>
+
+        {/* Grid skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          {Array.from({ length: 6 }).map((_, idx) => (
+            <div key={idx} className="bg-card border border-border rounded-xl p-6 h-48 flex flex-col justify-between">
+              <div className="flex justify-between">
+                <div className="space-y-2 w-2/3">
+                  <div className="h-5 bg-secondary rounded"></div>
+                  <div className="h-4 bg-secondary rounded w-1/2"></div>
+                </div>
+                <div className="h-6 bg-secondary rounded-full w-16"></div>
+              </div>
+              <div className="space-y-2">
+                <div className="h-4 bg-secondary rounded w-3/4"></div>
+                <div className="h-4 bg-secondary rounded w-5/6"></div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }

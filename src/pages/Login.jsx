@@ -13,7 +13,7 @@ export default function Login() {
 
   // Redirect if already authenticated
   useEffect(() => {
-    if (localStorage.getItem('isAuthenticated') === 'true') {
+    if (localStorage.getItem('token')) {
       navigate('/', { replace: true });
     }
   }, [navigate]);
@@ -25,8 +25,10 @@ export default function Login() {
 
     try {
       const data = await api.loginUser(username, password);
-      if (data.success) {
+      if (data.success && data.data && data.data.token) {
+        localStorage.setItem('token', data.data.token);
         localStorage.setItem('isAuthenticated', 'true');
+        localStorage.setItem('user', JSON.stringify(data.data));
         navigate('/');
       } else {
         setError(data.message || 'Invalid username or password.');

@@ -7,6 +7,7 @@ import { api } from '../services/api';
 export function useTelemetryPolling(deviceId, deviceStatus, intervalMs = 5000) {
   const [telemetry, setTelemetry] = useState({});
   const [activeAlerts, setActiveAlerts] = useState([]);
+  const [history, setHistory] = useState([]);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -16,6 +17,7 @@ export function useTelemetryPolling(deviceId, deviceStatus, intervalMs = 5000) {
 
     // Clear previous states
     setTelemetry({});
+    setHistory([]);
     setLastUpdated(null);
     setError('');
 
@@ -33,6 +35,7 @@ export function useTelemetryPolling(deviceId, deviceStatus, intervalMs = 5000) {
         // 1. Fetch live telemetry data
         const sensorsData = await api.fetchSensors(deviceId);
         if (sensorsData.success && sensorsData.data.length > 0) {
+          setHistory(sensorsData.data);
           const readings = {};
           let latestTime = null;
 
@@ -76,6 +79,7 @@ export function useTelemetryPolling(deviceId, deviceStatus, intervalMs = 5000) {
   return {
     telemetry,
     activeAlerts,
+    history,
     lastUpdated,
     loading,
     error

@@ -1,4 +1,6 @@
+const jwt = require('jsonwebtoken');
 const usersService = require('../services/usersService');
+const auditService = require('../services/auditService');
 
 // @desc    Register a new user
 // @route   POST /api/users/register
@@ -16,6 +18,9 @@ const registerUser = async (req, res, next) => {
     }
 
     const user = await usersService.registerUser(req.body);
+    // Log registration
+    await auditService.logAction(user.id, user.full_name, 'REGISTER_USER', `Registered user account: ${user.email}`, req.ip);
+
     res.status(201).json({
       success: true,
       message: 'User registered successfully.',
@@ -40,10 +45,39 @@ const loginUser = async (req, res, next) => {
       });
     }
 
+    // Generate JWT token (8 hours expiry)
+    const token = jwt.sign(
+      { id: user.id, email: user.email, full_name: user.full_name },
+      process.env.JWT_SECRET || 'super_secret_jwt_key_sansah_iot_portal',
+      { expiresIn: '8h' }
+    );
+
+    // Log LOGIN
+    await auditService.logAction(user.id, user.full_name, 'LOGIN', 'User successfully logged in', req.ip);
+
     res.status(200).json({
       success: true,
       message: 'Login successful.',
-      data: user
+      data: {
+        ...user,
+        token
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    User logout
+// @route   POST /api/users/logout
+const logoutUser = async (req, res, next) => {
+  try {
+    if (req.user) {
+      await auditService.logAction(req.user.id, req.user.full_name, 'LOGOUT', 'User logged out', req.ip);
+    }
+    res.status(200).json({
+      success: true,
+      message: 'Logout successful.'
     });
   } catch (error) {
     next(error);
@@ -68,5 +102,7 @@ const getUsers = async (req, res, next) => {
 module.exports = {
   registerUser,
   loginUser,
+  logoutUser,
   getUsers
 };
+

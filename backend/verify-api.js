@@ -224,6 +224,27 @@ async function verifyAll() {
     console.log('\nStep 8: Testing alert lifecycle state transitions...');
     const alertId = alertsAfterDuplicate[0].id;
 
+    // First perform login to get a JWT token
+    let verifyToken = null;
+    try {
+      const loginRes = await makeRequest({
+        hostname: 'localhost',
+        port: 5000,
+        path: '/api/users/login',
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      }, JSON.stringify({ email: 'admin', password: 'admin@123' }));
+      const loginBody = JSON.parse(loginRes.body);
+      if (loginRes.statusCode === 200 && loginBody.success && loginBody.data.token) {
+        verifyToken = loginBody.data.token;
+        console.log('✅ Obtained JWT auth token for lifecycle transition tests.');
+      } else {
+        console.warn('⚠️ Login failed during lifecycle verification:', loginRes.body);
+      }
+    } catch (loginErr) {
+      console.error('❌ Login request failed:', loginErr.message);
+    }
+
     // Acknowledge
     console.log(`Acknowledging Alert ID: ${alertId}...`);
     const ackRes = await makeRequest({
@@ -231,7 +252,10 @@ async function verifyAll() {
       port: 5000,
       path: `/api/alerts/${alertId}/acknowledge`,
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' }
+      headers: {
+        'Content-Type': 'application/json',
+        ...(verifyToken ? { 'Authorization': `Bearer ${verifyToken}` } : {})
+      }
     });
     
     const ackBody = JSON.parse(ackRes.body);
@@ -248,7 +272,10 @@ async function verifyAll() {
       port: 5000,
       path: `/api/alerts/${alertId}/resolve`,
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' }
+      headers: {
+        'Content-Type': 'application/json',
+        ...(verifyToken ? { 'Authorization': `Bearer ${verifyToken}` } : {})
+      }
     });
 
     const resolveBody = JSON.parse(resolveRes.body);

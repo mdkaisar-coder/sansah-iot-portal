@@ -8,9 +8,11 @@ import {
   Settings,
   LogOut,
   PlusCircle,
-  X
+  X,
+  FileText
 } from 'lucide-react';
 import clsx from 'clsx';
+import { api } from '../services/api';
 
 const navItems = [
   { name: 'Dashboard', path: '/', icon: LayoutDashboard },
@@ -18,6 +20,7 @@ const navItems = [
   { name: 'Register Device', path: '/devices/new', icon: PlusCircle },
   { name: 'Sensor Monitoring', path: '/sensors', icon: Activity },
   { name: 'Alerts', path: '/alerts', icon: Bell },
+  { name: 'Audit Logs', path: '/audit-logs', icon: FileText },
   { name: 'Settings', path: '/settings', icon: Settings },
 ];
 
@@ -25,10 +28,18 @@ export default function Sidebar({ isOpen, onClose }) {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const handleLogout = (e) => {
+  const handleLogout = async (e) => {
     e.preventDefault();
-    localStorage.removeItem('isAuthenticated');
-    navigate('/login', { replace: true });
+    try {
+      await api.logoutUser();
+    } catch (err) {
+      console.error('Logout request failed:', err);
+    } finally {
+      localStorage.removeItem('token');
+      localStorage.removeItem('isAuthenticated');
+      localStorage.removeItem('user');
+      navigate('/login', { replace: true });
+    }
   };
 
   return (
