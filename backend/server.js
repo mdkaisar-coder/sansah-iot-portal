@@ -115,7 +115,10 @@ app.get('/api/test-email', async (req, res) => {
   
   const envVerify = {
     RESEND_API_KEY: process.env.RESEND_API_KEY ? `${process.env.RESEND_API_KEY.substring(0, 5)}...${process.env.RESEND_API_KEY.slice(-5)} (len: ${process.env.RESEND_API_KEY.length})` : 'NOT SET',
-    ADMIN_EMAIL: process.env.ADMIN_EMAIL ? `${process.env.ADMIN_EMAIL.substring(0, 4)}... (len: ${process.env.ADMIN_EMAIL.length})` : 'NOT SET'
+    ADMIN_EMAIL: process.env.ADMIN_EMAIL ? `${process.env.ADMIN_EMAIL.substring(0, 4)}... (len: ${process.env.ADMIN_EMAIL.length})` : 'NOT SET',
+    allEnvKeysWithKeyword: Object.keys(process.env).filter(key => 
+      /resend|key|pass|mail|user|smtp/i.test(key)
+    )
   };
 
   try {
@@ -151,7 +154,10 @@ app.post('/api/test-email', async (req, res) => {
   
   const envVerify = {
     RESEND_API_KEY: process.env.RESEND_API_KEY ? `${process.env.RESEND_API_KEY.substring(0, 5)}...${process.env.RESEND_API_KEY.slice(-5)} (len: ${process.env.RESEND_API_KEY.length})` : 'NOT SET',
-    ADMIN_EMAIL: process.env.ADMIN_EMAIL ? `${process.env.ADMIN_EMAIL.substring(0, 4)}... (len: ${process.env.ADMIN_EMAIL.length})` : 'NOT SET'
+    ADMIN_EMAIL: process.env.ADMIN_EMAIL ? `${process.env.ADMIN_EMAIL.substring(0, 4)}... (len: ${process.env.ADMIN_EMAIL.length})` : 'NOT SET',
+    allEnvKeysWithKeyword: Object.keys(process.env).filter(key => 
+      /resend|key|pass|mail|user|smtp/i.test(key)
+    )
   };
 
   try {
