@@ -108,9 +108,41 @@ app.use('/api/settings', settingsRouter);
 
 // Test Email Endpoint
 const { sendTestEmail } = require('./services/emailService');
+
+app.get('/api/test-email', async (req, res) => {
+  const { target } = req.query;
+  console.log(`[HTTP GET] /api/test-email: Initiating test email request to: ${target || 'Default ADMIN_EMAIL'}`);
+  try {
+    const info = await sendTestEmail(target);
+    console.log(`[HTTP GET] /api/test-email: Test email sent successfully. MessageID: ${info.messageId}`);
+    res.status(200).json({
+      success: true,
+      message: 'Test email sent successfully via GET.',
+      accepted: info.accepted,
+      rejected: info.rejected,
+      response: info.response,
+      messageId: info.messageId
+    });
+  } catch (error) {
+    console.error('❌ GET /api/test-email Route Error:', error.message);
+    console.error(error.stack);
+    const emailService = require('./services/emailService');
+    const smtpVerification = await emailService.verifyConnection();
+    res.status(500).json({
+      success: false,
+      message: 'Failed to send test email via GET.',
+      error: error.message,
+      stack: error.stack,
+      smtpVerification
+    });
+  }
+});
+
 app.post('/api/test-email', async (req, res) => {
+  console.log('[HTTP POST] /api/test-email: Initiating test email request');
   try {
     const info = await sendTestEmail();
+    console.log(`[HTTP POST] /api/test-email: Test email sent successfully. MessageID: ${info.messageId}`);
     res.status(200).json({
       success: true,
       message: 'Test email sent successfully.',
@@ -120,11 +152,16 @@ app.post('/api/test-email', async (req, res) => {
       messageId: info.messageId
     });
   } catch (error) {
-    console.error('TestEmail Route Error:', error);
+    console.error('❌ POST /api/test-email Route Error:', error.message);
+    console.error(error.stack);
+    const emailService = require('./services/emailService');
+    const smtpVerification = await emailService.verifyConnection();
     res.status(500).json({
       success: false,
       message: 'Failed to send test email.',
-      error: error.message
+      error: error.message,
+      stack: error.stack,
+      smtpVerification
     });
   }
 });

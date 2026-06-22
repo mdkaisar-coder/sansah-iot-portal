@@ -3,6 +3,15 @@ const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
 let transporter = null;
+let smtpConfigUsed = {
+  host: null,
+  port: null,
+  secure: null,
+  requireTLS: null,
+  user: null,
+  isActive: false,
+  error: null
+};
 
 function getTransporter() {
   if (transporter) return transporter;
@@ -16,23 +25,59 @@ function getTransporter() {
   console.log(`[Email Service Startup] EMAIL_PASS is loaded: ${pass ? 'YES (Confidential)' : 'NO'}`);
 
   if (user && pass) {
-    console.log(`EmailService: Initializing Gmail SMTP transport with user: ${user}`);
+    const host = process.env.SMTP_HOST || 'smtp.gmail.com';
+    const port = parseInt(process.env.SMTP_PORT || '587', 10);
+    // If secure is not specified, it is true for port 465 and false for port 587
+    const secure = process.env.SMTP_SECURE !== undefined 
+      ? process.env.SMTP_SECURE === 'true' 
+      : port === 465;
+    
+    // For port 587 (or when secure is false), we should require TLS upgrade
+    const requireTLS = process.env.SMTP_REQUIRE_TLS !== undefined
+      ? process.env.SMTP_REQUIRE_TLS === 'true'
+      : (port === 587 || !secure);
+
+    smtpConfigUsed = {
+      host,
+      port,
+      secure,
+      requireTLS,
+      user,
+      isActive: true,
+      error: null
+    };
+
+    console.log('EmailService: Creating SMTP transporter with settings:');
+    console.log(`- Host: ${host}`);
+    console.log(`- Port: ${port}`);
+    console.log(`- Secure (SSL/TLS): ${secure}`);
+    console.log(`- RequireTLS (STARTTLS): ${requireTLS}`);
+    console.log(`- User: ${user}`);
+
     transporter = nodemailer.createTransport({
-      service: 'gmail',
-      host: 'smtp.gmail.com',
-      port: 465,
-      secure: true, // SSL/TLS
+      host,
+      port,
+      secure,
+      requireTLS,
       auth: {
         user,
         pass
+      },
+      tls: {
+        rejectUnauthorized: false // avoids certificate validation warnings
       }
     });
 
     console.log('EmailService: Initiating transporter connection verification...');
     transporter.verify((err, success) => {
       if (err) {
-        console.error('❌ EmailService Transporter Verification FAILED:', err.message);
+        smtpConfigUsed.error = err.message;
+        console.error('❌ EmailService Transporter Verification FAILED:');
+        console.error(`- Message: ${err.message}`);
+        console.error(`- Code: ${err.code}`);
+        console.error(`- Stack: ${err.stack}`);
       } else {
+        smtpConfigUsed.error = null;
         console.log('✅ EmailService Transporter Verification SUCCESSFUL');
       }
     });
@@ -40,6 +85,15 @@ function getTransporter() {
     return transporter;
   } else {
     console.warn('EmailService: EMAIL_USER or EMAIL_PASS not set in environment. Falling back to Console Logger.');
+    smtpConfigUsed = {
+      host: 'CONSOLE_FALLBACK',
+      port: null,
+      secure: null,
+      requireTLS: null,
+      user: null,
+      isActive: false,
+      error: 'Credentials missing'
+    };
     transporter = {
       sendMail: async (mailOptions) => {
         console.log('\n--- EMAIL TRANSMISSION FALLBACK ---');
@@ -352,8 +406,11 @@ async function verifyConnection() {
     
     // Check if fallback console transporter is used
     if (activeTransporter.sendMail && !activeTransporter.verify) {
-      return { success: true, details: 'Console logger active (fallback mode)' };
+      return { success: true, details: 'Console logger active (fallback mode)', config: smtpConfigUsed };
     }
+
+    const host = smtpConfigUsed.host || 'unknown';
+    const port = smtpConfigUsed.port || 'unknown';
 
     // Add a 3-second timeout to prevent server hanging if port is blocked by hosting provider
     await Promise.race([
@@ -364,14 +421,14 @@ async function verifyConnection() {
         });
       }),
       new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('SMTP connection verification timed out (port 465 might be blocked by provider)')), 3000)
+        setTimeout(() => reject(new Error(`SMTP connection verification timed out (port ${port} at ${host} might be blocked by provider)`)), 3000)
       )
     ]);
 
-    return { success: true };
+    return { success: true, config: smtpConfigUsed };
   } catch (err) {
     console.warn('[EmailService] SMTP Connection Verification failed:', err.message);
-    return { success: false, error: err.message };
+    return { success: false, error: err.message, stack: err.stack, config: smtpConfigUsed };
   }
 }
 
