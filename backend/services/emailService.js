@@ -73,9 +73,9 @@ function getTransporter() {
       tls: {
         rejectUnauthorized: false // avoids certificate validation warnings
       },
-      connectionTimeout: 5000, // 5 seconds
-      greetingTimeout: 5000,   // 5 seconds
-      socketTimeout: 5000,     // 5 seconds
+      connectionTimeout: 15000, // 15 seconds
+      greetingTimeout: 15000,   // 15 seconds
+      socketTimeout: 15000,     // 15 seconds
       lookup: (hostname, options, callback) => {
         return dns.lookup(hostname, { ...options, family: 4 }, callback);
       }
@@ -425,7 +425,7 @@ async function verifyConnection() {
     const host = smtpConfigUsed.host || 'unknown';
     const port = smtpConfigUsed.port || 'unknown';
 
-    // Add a 3-second timeout to prevent server hanging if port is blocked by hosting provider
+    // Add a 15-second timeout to prevent server hanging if port is blocked by hosting provider
     await Promise.race([
       new Promise((resolve, reject) => {
         activeTransporter.verify((err, success) => {
@@ -434,7 +434,7 @@ async function verifyConnection() {
         });
       }),
       new Promise((_, reject) => 
-        setTimeout(() => reject(new Error(`SMTP connection verification timed out (port ${port} at ${host} might be blocked by provider)`)), 3000)
+        setTimeout(() => reject(new Error(`SMTP connection verification timed out (port ${port} at ${host} might be blocked by provider)`)), 15000)
       )
     ]);
 
