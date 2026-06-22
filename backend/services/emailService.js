@@ -65,7 +65,10 @@ function getTransporter() {
       },
       tls: {
         rejectUnauthorized: false // avoids certificate validation warnings
-      }
+      },
+      connectionTimeout: 5000, // 5 seconds
+      greetingTimeout: 5000,   // 5 seconds
+      socketTimeout: 5000      // 5 seconds
     });
 
     console.log('EmailService: Initiating transporter connection verification...');
