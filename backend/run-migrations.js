@@ -128,6 +128,22 @@ async function run() {
       console.log('✅ FOREIGN KEY "fk_alerts_device" already exists.\n');
     }
 
+    // 8. Create email_delivery_logs table
+    console.log('Step 8: Initializing "email_delivery_logs" table...');
+    const createEmailLogsQuery = `
+      CREATE TABLE IF NOT EXISTS email_delivery_logs (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        alert_id INT NOT NULL,
+        recipient VARCHAR(100) NOT NULL,
+        success TINYINT(1) NOT NULL,
+        failure_reason VARCHAR(255) NULL,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (alert_id) REFERENCES alerts(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `;
+    await pool.query(createEmailLogsQuery);
+    console.log('✅ "email_delivery_logs" table checked/created successfully.\n');
+
     console.log('==================================================');
     console.log('    Database migration executed successfully!     ');
     console.log('==================================================');

@@ -1,5 +1,6 @@
 const devicesService = require('../services/devicesService');
 const auditService = require('../services/auditService');
+const alertsService = require('../services/alertsService');
 
 // @desc    Get all devices
 // @route   GET /api/devices
@@ -266,19 +267,6 @@ const triggerTestSpike = async (req, res, next) => {
       await pool.query('UPDATE alerts SET email_sent = 1 WHERE id = ?', [alertId]);
     }
 
-    // 4. Auto Cleanup: after 5 minutes, automatically mark the test alert as Resolved
-    setTimeout(async () => {
-      try {
-        await pool.query(
-          "UPDATE alerts SET status = 'Resolved', resolved_at = ? WHERE id = ?",
-          [new Date(), alertId]
-        );
-        console.log(`[Test Mode] Automatically resolved test alert ID ${alertId} after 5 minutes.`);
-      } catch (err) {
-        console.error(`[Test Mode] Failed to resolve test alert ID ${alertId} on timeout:`, err.message);
-      }
-    }, 5 * 60 * 1000);
-
     res.status(200).json({
       success: true,
       message: 'Test Alert Generated Successfully',
@@ -302,6 +290,9 @@ const triggerTestSpike = async (req, res, next) => {
 const getDeviceTimeline = async (req, res, next) => {
   const { id } = req.params;
   try {
+    // Dynamically resolve expired test alerts prior to timeline load
+    await alertsService.cleanupExpiredTestAlerts();
+
     const device = await devicesService.getDeviceById(id);
     if (!device) {
       return res.status(404).json({

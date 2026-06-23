@@ -211,6 +211,11 @@ async function startServer() {
     const settingsService = require('./services/settingsService');
     await settingsService.initSettingsTable();
     await settingsService.seedDefaultSettings();
+    
+    // 2b. Initialize email delivery logs table schema
+    const emailService = require('./services/emailService');
+    await emailService.initEmailLogsTable();
+    
     console.log('Database initialized successfully.');
   } catch (error) {
     console.warn('Database initialization failed. Server will start but database features may be unavailable:', error.message);

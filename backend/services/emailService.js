@@ -132,7 +132,22 @@ async function sendAlertEmail(device, alert) {
 
     // Resend free tier sandbox must use 'onboarding@resend.dev'
     const fromAddress = 'IoT Monitoring System <onboarding@resend.dev>';
-    let atLeastOneSent = false;
+    const { pool } = require('../db');
+    const logDelivery = async (recipient, success, failureReason) => {
+      try {
+        await pool.query(
+          `INSERT INTO email_delivery_logs (alert_id, recipient, success, failure_reason, timestamp)
+           VALUES (?, ?, ?, ?, ?)`,
+          [alert.id, recipient, success ? 1 : 0, failureReason || null, new Date()]
+        );
+      } catch (logErr) {
+        console.error('EmailService: Failed to write to email_delivery_logs:', logErr.message);
+      }
+    };
+
+    let adminSuccess = false;
+    let clientSuccess = false;
+    const shouldSendClient = !!(sendClient && device.alert_enabled && device.client_email);
     let errors = [];
 
     // Send to Admin (always required for all alerts)
@@ -145,14 +160,16 @@ async function sendAlertEmail(device, alert) {
         subject: `🚨 IoT Device Alert - ${device.device_name}`,
         html: htmlContent
       });
-      atLeastOneSent = true;
+      adminSuccess = true;
+      await logDelivery(adminEmailTarget, true, null);
     } catch (err) {
       console.error(`EmailService: Failed to send alert email to admin (${adminEmailTarget}):`, err.message);
       errors.push(`Admin email error: ${err.message}`);
+      await logDelivery(adminEmailTarget, false, err.message);
     }
 
     // Send to Client if enabled
-    if (sendClient && device.alert_enabled && device.client_email) {
+    if (shouldSendClient) {
       try {
         console.log(`EmailService: Dispatching client alert email to: ${device.client_email}`);
         await sendMailViaResend({
@@ -161,18 +178,22 @@ async function sendAlertEmail(device, alert) {
           subject: `🚨 IoT Device Alert - ${device.device_name}`,
           html: htmlContent
         });
-        atLeastOneSent = true;
+        clientSuccess = true;
+        await logDelivery(device.client_email, true, null);
       } catch (err) {
         console.error(`EmailService: Failed to send alert email to client (${device.client_email}):`, err.message);
         errors.push(`Client email error: ${err.message}`);
+        await logDelivery(device.client_email, false, err.message);
       }
     }
 
-    if (errors.length > 0 && !atLeastOneSent) {
+    const overallSuccess = adminSuccess && (!shouldSendClient || clientSuccess);
+
+    if (errors.length > 0 && !overallSuccess) {
       throw new Error(`Failed to send alert emails: ${errors.join('; ')}`);
     }
 
-    return atLeastOneSent;
+    return overallSuccess;
   } catch (err) {
     console.error('EmailService sendAlertEmail error:', err.message);
     return false;
@@ -337,9 +358,36 @@ Timestamp: ${timestampStr}`;
   }
 }
 
+/**
+ * Initializes the email_delivery_logs table schema in the database
+ */
+async function initEmailLogsTable() {
+  try {
+    const { pool } = require('../db');
+    console.log('EmailService: Initializing email_delivery_logs table schema...');
+    const createQuery = `
+      CREATE TABLE IF NOT EXISTS email_delivery_logs (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        alert_id INT NOT NULL,
+        recipient VARCHAR(100) NOT NULL,
+        success TINYINT(1) NOT NULL,
+        failure_reason VARCHAR(255) NULL,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (alert_id) REFERENCES alerts(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `;
+    await pool.query(createQuery);
+    console.log('✅ EmailService: email_delivery_logs table initialized.');
+  } catch (err) {
+    console.error('EmailService error: Failed to init email_delivery_logs table:', err.message);
+    throw err;
+  }
+}
+
 module.exports = {
   sendAlertEmail,
   sendTestEmail,
   verifyConnection,
-  sendDemoTestAlertEmail
+  sendDemoTestAlertEmail,
+  initEmailLogsTable
 };

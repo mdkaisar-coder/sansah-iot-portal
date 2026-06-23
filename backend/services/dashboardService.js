@@ -8,8 +8,8 @@ class DashboardService {
     const deviceStatsQuery = `
       SELECT 
         COUNT(*) AS totalDevices,
-        COALESCE(SUM(CASE WHEN LOWER(status) IN ('online', 'active') THEN 1 ELSE 0 END), 0) AS onlineDevices,
-        COALESCE(SUM(CASE WHEN LOWER(status) IN ('offline', 'inactive') THEN 1 ELSE 0 END), 0) AS offlineDevices
+        COALESCE(SUM(CASE WHEN LOWER(status) IN ('online', 'active', 'normal', 'warning', 'critical', 'alert') THEN 1 ELSE 0 END), 0) AS onlineDevices,
+        COALESCE(SUM(CASE WHEN status IS NULL OR LOWER(status) NOT IN ('online', 'active', 'normal', 'warning', 'critical', 'alert') THEN 1 ELSE 0 END), 0) AS offlineDevices
       FROM devices
     `;
     const [[deviceStats]] = await pool.query(deviceStatsQuery);

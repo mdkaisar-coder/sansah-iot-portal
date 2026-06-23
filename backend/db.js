@@ -74,7 +74,8 @@ const mockDb = {
   ],
   alerts: [],
   sensor_data: [],
-  settings: []
+  settings: [],
+  email_delivery_logs: []
 };
 
 // Seed password synchronously to avoid async cold-start race conditions: admin / admin@123
@@ -213,7 +214,7 @@ async function mockQuery(sql, params = []) {
   if (normalizedSql.includes('FROM devices') && normalizedSql.includes('status')) {
     if (normalizedSql.includes('totalDevices')) {
       const totalDevices = mockDb.devices.length;
-      const onlineDevices = mockDb.devices.filter(d => ['online', 'active'].includes((d.status || '').toLowerCase())).length;
+      const onlineDevices = mockDb.devices.filter(d => ['online', 'active', 'normal', 'warning', 'critical', 'alert'].includes((d.status || '').toLowerCase())).length;
       const offlineDevices = totalDevices - onlineDevices;
       return [[{ totalDevices, onlineDevices, offlineDevices }]];
     }
@@ -622,6 +623,25 @@ async function mockQuery(sql, params = []) {
     }
 
     return [enriched];
+  }
+
+  // Intercept for email_delivery_logs queries in mock mode
+  if (normalizedSql.toUpperCase().includes('EMAIL_DELIVERY_LOGS')) {
+    if (normalizedSql.toUpperCase().startsWith('CREATE TABLE')) {
+      return [[]];
+    }
+    if (normalizedSql.toUpperCase().startsWith('INSERT INTO')) {
+      const log = {
+        id: mockDb.email_delivery_logs.length + 1,
+        alert_id: p(0),
+        recipient: p(1),
+        success: p(2),
+        failure_reason: p(3),
+        timestamp: new Date().toISOString()
+      };
+      mockDb.email_delivery_logs.push(log);
+      return [{ insertId: log.id }];
+    }
   }
 
   console.log(`[MockDB] Warning: Unhandled SQL query: "${normalizedSql}"`, params);
