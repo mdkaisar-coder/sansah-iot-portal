@@ -66,6 +66,14 @@ class SensorsService {
       [device_id, sensor_name, sensor_value, timestamp]
     );
 
+    // Trigger real-time alerts checking
+    try {
+      const { checkAndCreateAlerts } = require('./telemetryService');
+      await checkAndCreateAlerts(device_id, { [sensor_name]: sensor_value });
+    } catch (alertErr) {
+      console.error('SensorsService: Failed to check/create alerts for new reading:', alertErr.message);
+    }
+
     return {
       id: result.insertId,
       device_id,

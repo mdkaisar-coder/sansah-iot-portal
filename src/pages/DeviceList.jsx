@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Search, Filter, ArrowUpDown, RefreshCw, Cpu } from 'lucide-react';
+import { Search, Filter, ArrowUpDown, RefreshCw, Cpu, Download } from 'lucide-react';
 import { api } from '../services/api';
 import DeviceCard from '../components/DeviceCard';
 
@@ -11,6 +11,48 @@ export default function DeviceList() {
   const [statusFilter, setStatusFilter] = useState('All');
   const [sensorFilter, setSensorFilter] = useState('All');
   const [sortBy, setSortBy] = useState('date-desc');
+
+  const handleExportCSV = () => {
+    if (processedDevices.length === 0) {
+      alert('No device inventory data available to export.');
+      return;
+    }
+    
+    const exportData = processedDevices.map(d => ({
+      'Device Name': d.name,
+      'Device Code': d.device_code,
+      'Type': d.type,
+      'Sensor Category': d.sensor_type,
+      'Protocol': d.protocol,
+      'Project Group': d.project,
+      'Location Site': d.site,
+      'Client Name': d.client_name,
+      'Registered Date': new Date(d.registeredDate).toLocaleString(),
+      'Status State': d.status
+    }));
+
+    const headers = Object.keys(exportData[0]);
+    const csvRows = [headers.join(',')];
+
+    for (const row of exportData) {
+      const values = headers.map(header => {
+        const val = row[header];
+        const escaped = ('' + (val === null || val === undefined ? '' : val)).replace(/"/g, '""');
+        return `"${escaped}"`;
+      });
+      csvRows.push(values.join(','));
+    }
+
+    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `Sansah_Device_Inventory_${new Date().toISOString().slice(0,10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
   const fetchDevices = async () => {
     try {
@@ -160,13 +202,22 @@ export default function DeviceList() {
           <h1 className="font-display text-2xl sm:text-3xl font-extrabold text-text tracking-wide uppercase">Device Inventory</h1>
           <p className="text-muted text-xs sm:text-sm mt-1">Manage, query, and monitor all registered physical assets.</p>
         </div>
-        <button 
-          onClick={fetchDevices} 
-          className="btn-secondary flex items-center space-x-2 text-xs py-2 px-4 select-none cursor-pointer"
-        >
-          <RefreshCw className="w-3.5 h-3.5" />
-          <span>Refresh List</span>
-        </button>
+        <div className="flex items-center space-x-3 w-full sm:w-auto">
+          <button 
+            onClick={handleExportCSV} 
+            className="btn-secondary flex items-center space-x-2 text-xs py-2 px-4 select-none cursor-pointer font-bold"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>Export CSV</span>
+          </button>
+          <button 
+            onClick={fetchDevices} 
+            className="btn-secondary flex items-center space-x-2 text-xs py-2 px-4 select-none cursor-pointer font-bold"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            <span>Refresh List</span>
+          </button>
+        </div>
       </div>
       
       {/* Filter panel */}

@@ -297,11 +297,143 @@ const triggerTestSpike = async (req, res, next) => {
   }
 };
 
+// @desc    Get device activity timeline
+// @route   GET /api/devices/:id/timeline
+const getDeviceTimeline = async (req, res, next) => {
+  const { id } = req.params;
+  try {
+    const device = await devicesService.getDeviceById(id);
+    if (!device) {
+      return res.status(404).json({
+        success: false,
+        message: `Device with ID ${id} not found.`
+      });
+    }
+
+    const deviceCode = device.device_code;
+    const deviceId = device.id;
+    const { pool } = require('../db');
+
+    // Query audit logs where details contain the device code
+    const [auditLogs] = await pool.query(
+      `SELECT * FROM audit_logs 
+       WHERE details LIKE ? 
+       ORDER BY created_at DESC`,
+      [`%(Code: ${deviceCode})%`]
+    );
+
+    // Query alerts where device_id = ?
+    const [alerts] = await pool.query(
+      `SELECT * FROM alerts 
+       WHERE device_id = ? 
+       ORDER BY created_at DESC`,
+      [deviceId]
+    );
+
+    const timelineEvents = [];
+
+    // Map audit logs to timeline events
+    auditLogs.forEach(log => {
+      let title = 'Activity Logged';
+      let type = 'system';
+      if (log.action === 'CREATE_DEVICE') {
+        title = 'Device Registered';
+        type = 'onboarding';
+      } else if (log.action === 'UPDATE_DEVICE') {
+        title = 'Device Updated';
+        type = 'maintenance';
+      } else if (log.action === 'DELETE_DEVICE') {
+        title = 'Device Deleted';
+        type = 'maintenance';
+      }
+      
+      timelineEvents.push({
+        id: `audit-${log.id}`,
+        type: type,
+        action: log.action,
+        title: title,
+        description: log.details,
+        timestamp: log.created_at,
+        actor: log.username || 'System',
+        ip_address: log.ip_address
+      });
+    });
+
+    // Map alerts to timeline events (Triggered, Acknowledged, Resolved)
+    alerts.forEach(alert => {
+      // 1. Triggered
+      timelineEvents.push({
+        id: `alert-trigger-${alert.id}`,
+        type: 'alert_trigger',
+        title: `${alert.severity} Alert Triggered`,
+        description: `Sensor ${alert.sensor_type} reading for ${alert.metric_name} was ${alert.metric_value} (threshold: ${alert.threshold_value}). Message: ${alert.message}`,
+        timestamp: alert.created_at,
+        actor: 'Sensor Engine',
+        status: alert.status,
+        severity: alert.severity
+      });
+
+      // 2. Acknowledged
+      if (alert.acknowledged_at) {
+        timelineEvents.push({
+          id: `alert-ack-${alert.id}`,
+          type: 'alert_ack',
+          title: `Alert Acknowledged`,
+          description: `Alert ID ${alert.id} was acknowledged.`,
+          timestamp: alert.acknowledged_at,
+          actor: 'Operator',
+          status: alert.status,
+          severity: alert.severity
+        });
+      }
+
+      // 3. Resolved
+      if (alert.resolved_at) {
+        timelineEvents.push({
+          id: `alert-resolve-${alert.id}`,
+          type: 'alert_resolve',
+          title: `Alert Resolved`,
+          description: `Alert ID ${alert.id} was marked as resolved.`,
+          timestamp: alert.resolved_at,
+          actor: 'System / Operator',
+          status: alert.status,
+          severity: alert.severity
+        });
+      }
+    });
+
+    // Check if we have a creation event, otherwise add device.created_at
+    const hasCreationLog = timelineEvents.some(e => e.action === 'CREATE_DEVICE');
+    if (!hasCreationLog && device.created_at) {
+      timelineEvents.push({
+        id: `device-init-${device.id}`,
+        type: 'onboarding',
+        title: 'Device Registered (Baseline)',
+        description: `Device initialized in portal.`,
+        timestamp: device.created_at,
+        actor: 'System'
+      });
+    }
+
+    // Sort timeline events by timestamp descending
+    timelineEvents.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+    res.status(200).json({
+      success: true,
+      count: timelineEvents.length,
+      data: timelineEvents
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getDevices,
   getDeviceById,
   createDevice,
   updateDevice,
   deleteDevice,
-  triggerTestSpike
+  triggerTestSpike,
+  getDeviceTimeline
 };

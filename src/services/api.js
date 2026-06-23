@@ -110,6 +110,7 @@ export const api = {
   deleteDevice: (id) => apiFetch(`/devices/${id}`, {
     method: 'DELETE'
   }),
+  fetchDeviceTimeline: (id) => apiFetch(`/devices/${id}/timeline`),
 
   // Sensors
   fetchSensors: (deviceId) => apiFetch(`/sensors?deviceId=${deviceId}`),

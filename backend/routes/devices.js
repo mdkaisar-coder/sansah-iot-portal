@@ -6,7 +6,8 @@ const {
   createDevice,
   updateDevice,
   deleteDevice,
-  triggerTestSpike
+  triggerTestSpike,
+  getDeviceTimeline
 } = require('../controllers/devicesController');
 const { validateDevice } = require('../middleware/validation');
 
@@ -15,6 +16,9 @@ router.get('/', getDevices);
 
 // GET /api/devices/:id
 router.get('/:id', getDeviceById);
+
+// GET /api/devices/:id/timeline
+router.get('/:id/timeline', getDeviceTimeline);
 
 // POST /api/devices
 router.post('/', validateDevice, createDevice);

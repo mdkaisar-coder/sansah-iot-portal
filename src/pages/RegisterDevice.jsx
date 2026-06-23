@@ -25,6 +25,7 @@ const sensorCategories = [
 
 export default function RegisterDevice() {
   const navigate = useNavigate();
+  const [step, setStep] = useState('input'); // 'input' or 'review'
   const [formData, setFormData] = useState({
     name: '',
     id: '',
@@ -46,8 +47,13 @@ export default function RegisterDevice() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
+    setError('');
+    setStep('review');
+  };
+
+  const handleConfirmSubmit = async () => {
     setError('');
     setLoading(true);
 
@@ -71,13 +77,16 @@ export default function RegisterDevice() {
       if (data.success) {
         alert(`Device ${formData.name} registered successfully!`);
         handleReset();
+        setStep('input');
         navigate('/devices');
       } else {
         setError(data.message || 'Failed to register device.');
+        setStep('input');
       }
     } catch (err) {
       console.error('Connection Error:', err);
       setError(err.message || 'Connection to backend failed. Please try again.');
+      setStep('input');
     } finally {
       setLoading(false);
     }
@@ -100,6 +109,114 @@ export default function RegisterDevice() {
     });
     setError('');
   };
+
+  if (step === 'review') {
+    return (
+      <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-300">
+        {/* Title block */}
+        <div className="flex items-center space-x-4">
+          <button 
+            type="button" 
+            onClick={() => setStep('input')} 
+            className="p-2 bg-card border border-border hover:bg-secondary rounded-lg transition-colors text-muted hover:text-text cursor-pointer"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+          <div>
+            <h1 className="font-display text-2xl font-bold text-text tracking-wide">REVIEW CONFIGURATION</h1>
+            <p className="text-muted text-xs mt-1">Please review the configuration details before finalizing the device registration.</p>
+          </div>
+        </div>
+
+        {error && (
+          <div className="bg-danger/10 border border-danger/30 text-danger p-4 rounded-xl text-sm font-medium shadow-soft">
+            {error}
+          </div>
+        )}
+
+        <div className="bg-card border border-border rounded-xl p-6 shadow-soft space-y-6 max-w-3xl">
+          <h2 className="font-display text-sm font-bold text-text uppercase tracking-wider border-b border-border/50 pb-2 flex items-center">
+            <Cpu className="w-4 h-4 mr-2 text-primary" />
+            <span>Registration Summary</span>
+          </h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-sm">
+            <div className="flex justify-between border-b border-border/40 pb-2">
+              <span className="text-muted">Device Name:</span>
+              <span className="font-semibold text-text">{formData.name}</span>
+            </div>
+            <div className="flex justify-between border-b border-border/40 pb-2">
+              <span className="text-muted">Device ID / Code:</span>
+              <span className="font-mono font-semibold text-text">{formData.id}</span>
+            </div>
+            <div className="flex justify-between border-b border-border/40 pb-2">
+              <span className="text-muted">Device Type:</span>
+              <span className="font-semibold text-text">{formData.type}</span>
+            </div>
+            <div className="flex justify-between border-b border-border/40 pb-2">
+              <span className="text-muted">Protocol:</span>
+              <span className="font-mono font-semibold text-text">{formData.protocol}</span>
+            </div>
+            <div className="flex justify-between border-b border-border/40 pb-2">
+              <span className="text-muted">Sensor Category:</span>
+              <span className="font-semibold text-text">{formData.sensor_type}</span>
+            </div>
+            <div className="flex justify-between border-b border-border/40 pb-2">
+              <span className="text-muted">Project Name:</span>
+              <span className="font-semibold text-text">{formData.project}</span>
+            </div>
+            <div className="flex justify-between border-b border-border/40 pb-2">
+              <span className="text-muted">Location / Site:</span>
+              <span className="font-semibold text-text">{formData.site}</span>
+            </div>
+            <div className="flex justify-between border-b border-border/40 pb-2">
+              <span className="text-muted">Initial Status:</span>
+              <span className="font-semibold text-text">{formData.status}</span>
+            </div>
+            <div className="flex justify-between border-b border-border/40 pb-2">
+              <span className="text-muted">Client Name:</span>
+              <span className="font-semibold text-text">{formData.client_name}</span>
+            </div>
+            <div className="flex justify-between border-b border-border/40 pb-2">
+              <span className="text-muted">Client Email:</span>
+              <span className="font-mono font-semibold text-text">{formData.client_email}</span>
+            </div>
+            <div className="flex justify-between border-b border-border/40 pb-2">
+              <span className="text-muted">Client Phone:</span>
+              <span className="font-semibold text-text">{formData.client_phone}</span>
+            </div>
+            <div className="flex justify-between border-b border-border/40 pb-2">
+              <span className="text-muted">Email Alerts:</span>
+              <span className={`font-bold ${formData.alert_enabled === 'true' ? 'text-success' : 'text-muted'}`}>
+                {formData.alert_enabled === 'true' ? 'Enabled' : 'Muted'}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end space-x-4 pt-4 border-t border-border/50">
+            <button 
+              type="button" 
+              onClick={() => setStep('input')}
+              disabled={loading}
+              className="btn-secondary"
+            >
+              Edit Fields
+            </button>
+            <button 
+              type="button" 
+              onClick={handleConfirmSubmit}
+              disabled={loading}
+              className="btn-primary flex items-center space-x-2 min-w-[150px] justify-center"
+            >
+              {loading ? (
+                <RefreshCw className="w-4 h-4 animate-spin" />
+              ) : 'Confirm & Register'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-300">

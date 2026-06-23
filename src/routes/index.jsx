@@ -10,6 +10,7 @@ import SensorMonitoring from '../pages/SensorMonitoring';
 import Alerts from '../pages/Alerts';
 import Settings from '../pages/Settings';
 import AuditLogs from '../pages/AuditLogs';
+import SensorSimulator from '../pages/SensorSimulator';
 import ErrorBoundary from '../components/ErrorBoundary';
 
 export const router = createBrowserRouter([
@@ -48,6 +49,10 @@ export const router = createBrowserRouter([
       {
         path: 'sensors',
         element: <SensorMonitoring />,
+      },
+      {
+        path: 'sensor-simulator',
+        element: <SensorSimulator />,
       },
       {
         path: 'alerts',

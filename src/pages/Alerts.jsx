@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { AlertTriangle, Clock, CheckCircle2, Eye, ShieldAlert, Check, HelpCircle, RefreshCw } from 'lucide-react';
+import { AlertTriangle, Clock, CheckCircle2, Eye, ShieldAlert, Check, HelpCircle, RefreshCw, Download, FileText } from 'lucide-react';
 import { api } from '../services/api';
 import TableComponent from '../components/TableComponent';
 import StatusBadge from '../components/StatusBadge';
@@ -78,6 +78,154 @@ export default function Alerts() {
     }
   };
 
+  const handleExportCSV = () => {
+    if (alertsList.length === 0) {
+      alert('No alerts logged to export.');
+      return;
+    }
+
+    const exportData = alertsList.map(a => ({
+      'Alert ID': a.id,
+      'Device Name': a.device_name,
+      'Device Code': a.device_code || 'N/A',
+      'Client Name': a.client_name || 'N/A',
+      'Client Email': a.client_email || 'N/A',
+      'Project': a.project_name || 'N/A',
+      'Metric': a.metric_name,
+      'Logged Reading': a.metric_value,
+      'Threshold': a.threshold_value,
+      'Severity': a.severity,
+      'Status': a.status,
+      'Timestamp': new Date(a.created_at).toLocaleString(),
+      'Message': a.message
+    }));
+
+    const headers = Object.keys(exportData[0]);
+    const csvRows = [headers.join(',')];
+
+    for (const row of exportData) {
+      const values = headers.map(header => {
+        const val = row[header];
+        const escaped = ('' + (val === null || val === undefined ? '' : val)).replace(/"/g, '""');
+        return `"${escaped}"`;
+      });
+      csvRows.push(values.join(','));
+    }
+
+    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `Sansah_Alerts_Report_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportPDF = () => {
+    if (alertsList.length === 0) {
+      alert('No alerts logged to export.');
+      return;
+    }
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert('Pop-up blocker is preventing the PDF print view from opening. Please allow popups.');
+      return;
+    }
+
+    const alertsHtml = alertsList.map(alert => `
+      <tr style="border-bottom: 1px solid #e2e8f0; font-size: 11px;">
+        <td style="padding: 8px;"><strong>${alert.device_name}</strong><br/><span style="color:#64748b; font-family:monospace; font-size:9px;">${alert.device_code || ''}</span></td>
+        <td style="padding: 8px;">${alert.client_name || 'N/A'}</td>
+        <td style="padding: 8px; font-family: monospace;">${alert.metric_name}: <strong>${alert.metric_value}</strong></td>
+        <td style="padding: 8px; font-family: monospace; color: #475569;">${alert.threshold_value}</td>
+        <td style="padding: 8px;"><span style="font-weight: bold; color: ${
+          alert.severity === 'Critical' ? '#ef4444' :
+          alert.severity === 'High' ? '#f97316' :
+          alert.severity === 'Medium' ? '#eab308' : '#3b82f6'
+        }">${alert.severity}</span></td>
+        <td style="padding: 8px;">${alert.status}</td>
+        <td style="padding: 8px; font-family: monospace; font-size:10px;">${new Date(alert.created_at).toLocaleString()}</td>
+      </tr>
+    `).join('');
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Sansah Innovations - IoT Alarm Incident Report</title>
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #1e293b; line-height: 1.5; padding: 40px; }
+            h1 { font-size: 24px; color: #0f172a; margin-bottom: 4px; }
+            .header-table { width: 100%; border-bottom: 3px solid #3b82f6; padding-bottom: 15px; margin-bottom: 30px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th { background: #f1f5f9; text-align: left; padding: 8px; font-size: 11px; font-weight: bold; border: 1px solid #e2e8f0; }
+            td { border: 1px solid #e2e8f0; padding: 8px; }
+            @media print {
+              body { padding: 20px; }
+              @page { size: A4; margin: 20mm; }
+            }
+          </style>
+        </head>
+        <body>
+          <table class="header-table" style="width: 100%; border: none;">
+            <tr>
+              <td style="border: none;">
+                <h1 style="margin: 0; color: #1d4ed8; font-size: 28px; font-weight: bold; font-family: Arial, sans-serif;">SANSAH INNOVATIONS</h1>
+                <span style="font-size: 12px; color: #64748b; font-weight: 600; tracking-wider;">IoT PORTAL ALARM INCIDENT REPORT</span>
+              </td>
+              <td style="text-align: right; vertical-align: bottom; border: none;">
+                <span style="font-size: 12px; color: #64748b;">Report Generated: ${new Date().toLocaleString()}</span>
+              </td>
+            </tr>
+          </table>
+
+          <div style="display: flex; gap: 15px; margin-bottom: 25px; font-size: 12px;">
+            <div style="border: 1px solid #e2e8f0; padding: 10px; border-radius: 6px; background-color: #f8fafc; flex: 1;">
+              <strong>Active Alarms:</strong> ${stats.active}
+            </div>
+            <div style="border: 1px solid #e2e8f0; padding: 10px; border-radius: 6px; background-color: #f8fafc; flex: 1;">
+              <strong>Critical Alarms:</strong> ${stats.critical}
+            </div>
+            <div style="border: 1px solid #e2e8f0; padding: 10px; border-radius: 6px; background-color: #f8fafc; flex: 1;">
+              <strong>Total Logged Alarms:</strong> ${stats.total}
+            </div>
+          </div>
+
+          <h2>Alarm Feed Listing</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Device Asset</th>
+                <th>Client Name</th>
+                <th>Metric Reading</th>
+                <th>Threshold</th>
+                <th>Severity</th>
+                <th>Status</th>
+                <th>Timestamp</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${alertsHtml}
+            </tbody>
+          </table>
+
+          <div style="margin-top: 50px; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 15px; font-size: 10px; color: #94a3b8;">
+            Sansah Innovations Private Limited - Confidentially Generated Document
+          </div>
+
+          <script>
+            window.onload = function() {
+              window.print();
+            }
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
   useEffect(() => {
     fetchAlertsAndStats();
   }, [page, severityFilter, statusFilter, selectedDeviceId]);
@@ -145,13 +293,29 @@ export default function Alerts() {
           <h1 className="font-display text-2xl sm:text-3xl font-extrabold text-text tracking-wide uppercase">Alarm Center</h1>
           <p className="text-muted text-xs sm:text-sm mt-1">Real-time telemetry anomaly detection and alert lifecycle management.</p>
         </div>
-        <button 
-          onClick={fetchAlertsAndStats} 
-          className="btn-secondary flex items-center space-x-2 text-xs py-2 px-4 select-none cursor-pointer"
-        >
-          <RefreshCw className="w-3.5 h-3.5" />
-          <span>Sync Feeds</span>
-        </button>
+        <div className="flex items-center space-x-3 w-full sm:w-auto">
+          <button 
+            onClick={handleExportCSV} 
+            className="btn-secondary flex items-center space-x-2 text-xs py-2 px-4 select-none cursor-pointer font-bold"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>Export CSV</span>
+          </button>
+          <button 
+            onClick={handleExportPDF} 
+            className="btn-secondary flex items-center space-x-2 text-xs py-2 px-4 select-none cursor-pointer font-bold"
+          >
+            <FileText className="w-3.5 h-3.5" />
+            <span>Export PDF Report</span>
+          </button>
+          <button 
+            onClick={fetchAlertsAndStats} 
+            className="btn-secondary flex items-center space-x-2 text-xs py-2 px-4 select-none cursor-pointer font-bold"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            <span>Sync Feeds</span>
+          </button>
+        </div>
       </div>
 
       {/* Stats Cards Dashboard */}

@@ -21,7 +21,9 @@ import {
   CheckCircle2,
   Calendar,
   Layers,
-  Info
+  Info,
+  Download,
+  FileText
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
@@ -195,6 +197,161 @@ export default function SensorMonitoring() {
     } finally {
       setSpiking(false);
     }
+  };
+
+  const handleExportCSV = () => {
+    if (!history || history.length === 0) {
+      alert('No telemetry readings history available to export.');
+      return;
+    }
+
+    const exportData = history.map(h => ({
+      'Record ID': h.id,
+      'Device Name': selectedDevice ? selectedDevice.device_name : '',
+      'Device Code': selectedDevice ? selectedDevice.device_code : '',
+      'Metric Name': h.sensor_name,
+      'Value': h.sensor_value,
+      'Timestamp': new Date(h.recorded_at).toLocaleString()
+    }));
+
+    const headers = Object.keys(exportData[0]);
+    const csvRows = [headers.join(',')];
+
+    for (const row of exportData) {
+      const values = headers.map(header => {
+        const val = row[header];
+        const escaped = ('' + (val === null || val === undefined ? '' : val)).replace(/"/g, '""');
+        return `"${escaped}"`;
+      });
+      csvRows.push(values.join(','));
+    }
+
+    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `Sansah_Telemetry_Report_${selectedDevice ? selectedDevice.device_code : 'Device'}_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportPDF = () => {
+    if (!selectedDevice) {
+      alert('Please select a device to export.');
+      return;
+    }
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert('Pop-up blocker is preventing the PDF print view from opening. Please allow popups.');
+      return;
+    }
+
+    const metricsHtml = Object.entries(telemetry).map(([metricName, metricValue]) => {
+      const meta = getMetricMetadata(metricName);
+      const metricEvaluation = getMetricStatusAndThreshold(metricName, metricValue);
+      return `
+        <tr style="border-bottom: 1px solid #e2e8f0; font-size: 12px;">
+          <td style="padding: 10px; font-weight: bold;">${meta.label}</td>
+          <td style="padding: 10px; font-family: monospace;">${metricValue} ${meta.unit}</td>
+          <td style="padding: 10px; font-family: monospace; color: #475569;">${metricEvaluation.threshold}</td>
+          <td style="padding: 10px; font-weight: bold; color: ${
+            metricEvaluation.status === 'Critical' ? '#ef4444' :
+            metricEvaluation.status === 'Alert' ? '#f97316' :
+            metricEvaluation.status === 'Warning' ? '#eab308' : '#16a34a'
+          }">${metricEvaluation.status}</td>
+        </tr>
+      `;
+    }).join('');
+
+    const recentReadingsHtml = history.slice(0, 15).map(h => `
+      <tr style="border-bottom: 1px solid #e2e8f0; font-size: 11px;">
+        <td style="padding: 6px; font-family: monospace;">${new Date(h.recorded_at).toLocaleString()}</td>
+        <td style="padding: 6px;"><strong>${h.sensor_name}</strong></td>
+        <td style="padding: 6px; font-family: monospace;">${h.sensor_value}</td>
+      </tr>
+    `).join('');
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Sansah Innovations - IoT Device Telemetry Report</title>
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #1e293b; line-height: 1.5; padding: 40px; }
+            h1 { font-size: 24px; color: #0f172a; margin-bottom: 4px; }
+            h2 { font-size: 15px; color: #334155; border-bottom: 2px solid #e2e8f0; padding-bottom: 6px; margin-top: 30px; }
+            .header-table { width: 100%; border-bottom: 3px solid #3b82f6; padding-bottom: 15px; margin-bottom: 30px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+            th { background: #f1f5f9; text-align: left; padding: 8px; font-size: 11px; font-weight: bold; border: 1px solid #e2e8f0; }
+            td { border: 1px solid #e2e8f0; padding: 8px; }
+            @media print {
+              body { padding: 20px; }
+              @page { size: A4; margin: 20mm; }
+            }
+          </style>
+        </head>
+        <body>
+          <table class="header-table" style="width: 100%; border: none;">
+            <tr>
+              <td style="border: none;">
+                <h1 style="margin: 0; color: #1d4ed8; font-size: 28px; font-weight: bold; font-family: Arial, sans-serif;">SANSAH INNOVATIONS</h1>
+                <span style="font-size: 12px; color: #64748b; font-weight: 600; tracking-wider;">IoT PORTAL DEVICE TELEMETRY REPORT</span>
+              </td>
+              <td style="text-align: right; vertical-align: bottom; border: none;">
+                <span style="font-size: 12px; color: #64748b;">Report Generated: ${new Date().toLocaleString()}</span>
+              </td>
+            </tr>
+          </table>
+
+          <div style="background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 15px; margin-bottom: 30px;">
+            <h2 style="margin: 0 0 5px 0; border: none; padding: 0; font-size: 18px; color: #1e40af;">Device Asset: ${selectedDevice.device_name}</h2>
+            <p style="margin: 0; font-family: monospace; font-size: 12px; color: #1e3a8a;">Device ID / Code: ${selectedDevice.device_code} | Protocol: ${selectedDevice.protocol || 'N/A'}</p>
+          </div>
+
+          <h2>Current Diagnostic Metrics</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Telemetry Parameter</th>
+                <th>Current Value</th>
+                <th>Threshold Reference Limit</th>
+                <th>Diagnostic Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${metricsHtml}
+            </tbody>
+          </table>
+
+          <h2>Recent Telemetry Packets (Last 15 Records)</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Timestamp</th>
+                <th>Parameter Name</th>
+                <th>Logged Reading</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${recentReadingsHtml || '<tr><td colspan="3" style="text-align:center;">No recent records found.</td></tr>'}
+            </tbody>
+          </table>
+
+          <div style="margin-top: 50px; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 15px; font-size: 10px; color: #94a3b8;">
+            Sansah Innovations Private Limited - Confidentially Generated Document
+          </div>
+
+          <script>
+            window.onload = function() {
+              window.print();
+            }
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
   };
 
   // Telemetry metadata lookup helper (icons, label names, units)
@@ -491,20 +648,38 @@ export default function SensorMonitoring() {
             </div>
 
             {/* Test Spike Action Button */}
-            {(selectedDevice.status || '').toLowerCase() !== 'offline' && (
+            <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 mt-4 sm:mt-auto w-full sm:w-auto">
               <button
-                onClick={handleForceSpike}
-                disabled={spiking}
-                className="btn-danger flex items-center space-x-2 text-xs py-2.5 px-4 border border-danger/30 cursor-pointer w-full sm:w-auto justify-center select-none font-bold uppercase tracking-wider mt-4 sm:mt-auto"
+                onClick={handleExportCSV}
+                className="btn-secondary flex items-center space-x-1.5 text-xs py-2 px-3 select-none cursor-pointer justify-center font-bold"
               >
-                {spiking ? (
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <Zap className="w-3.5 h-3.5" />
-                )}
-                <span>Force Test Mode</span>
+                <Download className="w-3.5 h-3.5" />
+                <span>CSV</span>
               </button>
-            )}
+              
+              <button
+                onClick={handleExportPDF}
+                className="btn-secondary flex items-center space-x-1.5 text-xs py-2 px-3 select-none cursor-pointer justify-center font-bold"
+              >
+                <FileText className="w-3.5 h-3.5" />
+                <span>PDF Summary</span>
+              </button>
+
+              {(selectedDevice.status || '').toLowerCase() !== 'offline' && (
+                <button
+                  onClick={handleForceSpike}
+                  disabled={spiking}
+                  className="btn-danger flex items-center space-x-2 text-xs py-2.5 px-4 border border-danger/30 cursor-pointer w-full sm:w-auto justify-center select-none font-bold uppercase tracking-wider"
+                >
+                  {spiking ? (
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Zap className="w-3.5 h-3.5" />
+                  )}
+                  <span>Force Test Mode</span>
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}

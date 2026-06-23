@@ -9,7 +9,8 @@ import {
   LogOut,
   PlusCircle,
   X,
-  FileText
+  FileText,
+  Sliders
 } from 'lucide-react';
 import clsx from 'clsx';
 import { api } from '../services/api';
@@ -19,6 +20,7 @@ const navItems = [
   { name: 'Device List', path: '/devices', icon: List },
   { name: 'Register Device', path: '/devices/new', icon: PlusCircle },
   { name: 'Sensor Monitoring', path: '/sensors', icon: Activity },
+  { name: 'Sensor Simulator', path: '/sensor-simulator', icon: Sliders },
   { name: 'Alerts', path: '/alerts', icon: Bell },
   { name: 'Audit Logs', path: '/audit-logs', icon: FileText },
   { name: 'Settings', path: '/settings', icon: Settings },
