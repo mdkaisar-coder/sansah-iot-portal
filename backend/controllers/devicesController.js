@@ -314,13 +314,20 @@ const getDeviceTimeline = async (req, res, next) => {
     const deviceId = device.id;
     const { pool } = require('../db');
 
-    // Query audit logs where details contain the device code
-    const [auditLogs] = await pool.query(
-      `SELECT * FROM audit_logs 
-       WHERE details LIKE ? 
-       ORDER BY created_at DESC`,
-      [`%(Code: ${deviceCode})%`]
-    );
+    // Query audit logs where details contain the device code (using safe try/catch for legacy schemas)
+    let auditLogs = [];
+    try {
+      const [logs] = await pool.query(
+        `SELECT * FROM audit_logs 
+         WHERE details LIKE ? 
+         ORDER BY created_at DESC`,
+        [`%(Code: ${deviceCode})%`]
+      );
+      auditLogs = logs;
+    } catch (dbErr) {
+      console.warn(`Failed to query audit_logs for timeline of device ${deviceCode}:`, dbErr.message);
+      // Fallback: Default to empty logs, device creation/updates will be deduced from devices table or alerts
+    }
 
     // Query alerts where device_id = ?
     const [alerts] = await pool.query(
@@ -352,10 +359,10 @@ const getDeviceTimeline = async (req, res, next) => {
         type: type,
         action: log.action,
         title: title,
-        description: log.details,
-        timestamp: log.created_at,
+        description: log.details || `Action: ${log.action}`,
+        timestamp: log.created_at || log.action_time || new Date(),
         actor: log.username || 'System',
-        ip_address: log.ip_address
+        ip_address: log.ip_address || 'N/A'
       });
     });
 
